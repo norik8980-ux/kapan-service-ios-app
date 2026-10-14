@@ -1,0 +1,295 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		438CF38BE786445692F5CBB0 /* KapanServicePlumbersApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DE8FEE74B347F398F90E73 /* KapanServicePlumbersApp.swift */; };
+		89E9D361955948F1B897D39C /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19569B51C47749518B9239DF /* Models.swift */; };
+		4208FAABDA9E47EAB0D59E0E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F455C9B19DE34A83A37982F2 /* APIClient.swift */; };
+		F8BF27123428464492922D27 /* LocationPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C220D95343F462D998C89F0 /* LocationPublisher.swift */; };
+		2C54CCC4DF8B4A20922B8BE6 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5879AC56A81946EF9155C774 /* SessionStore.swift */; };
+		E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F794E0211C47C7960EA72B /* AccountView.swift */; };
+		D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB362E5D130746F9995D00CE /* BookingDetailView.swift */; };
+		88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */; };
+		ED4B955B34EB4233B8836C2A /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */; };
+		0752F67AA6BB4AEF845512B1 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F866DEE350426AA01501E6 /* LoginView.swift */; };
+		A55B2893EFBD428CB2A1DF04 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE0EB547438248C79C98CF77 /* MainTabView.swift */; };
+		A2866269FD984E8783AD66AA /* PlumbersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF3E283B864B608D3553EB /* PlumbersListView.swift */; };
+		675573AD485A433CBE70EAD0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483503BE37D54A059F8A16A2 /* RootView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AB41AD57CFBB43FF8004474B /* KapanServicePlumbers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KapanServicePlumbers.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		37413AD8082245F69300C329 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		89DE8FEE74B347F398F90E73 /* KapanServicePlumbersApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KapanServicePlumbersApp.swift; sourceTree = "<group>"; };
+		19569B51C47749518B9239DF /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F455C9B19DE34A83A37982F2 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		4C220D95343F462D998C89F0 /* LocationPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPublisher.swift; sourceTree = "<group>"; };
+		5879AC56A81946EF9155C774 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		80F794E0211C47C7960EA72B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		DB362E5D130746F9995D00CE /* BookingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingDetailView.swift; sourceTree = "<group>"; };
+		02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsListView.swift; sourceTree = "<group>"; };
+		5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		C0F866DEE350426AA01501E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		CE0EB547438248C79C98CF77 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		B3EF3E283B864B608D3553EB /* PlumbersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlumbersListView.swift; sourceTree = "<group>"; };
+		483503BE37D54A059F8A16A2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		664CC0A174E7472594EA3A91 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		F2324E3B6C904868A4CCF865 = {
+			isa = PBXGroup;
+			children = (
+				E3D61D2964C74453AACD6C4D /* KapanServicePlumbers */,
+				4A1A401B486A4E45A9531036 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4A1A401B486A4E45A9531036 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB41AD57CFBB43FF8004474B /* KapanServicePlumbers.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E3D61D2964C74453AACD6C4D /* KapanServicePlumbers */ = {
+			isa = PBXGroup;
+			children = (
+				89DE8FEE74B347F398F90E73 /* KapanServicePlumbersApp.swift */,
+				226B7C014811457983297621 /* Models */,
+				E849566039D84AB290772BA9 /* Services */,
+				F860CBECCCDC40FABF184234 /* Views */,
+				37413AD8082245F69300C329 /* Info.plist */,
+			);
+			path = KapanServicePlumbers;
+			sourceTree = "<group>";
+		};
+		226B7C014811457983297621 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				19569B51C47749518B9239DF /* Models.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		E849566039D84AB290772BA9 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				F455C9B19DE34A83A37982F2 /* APIClient.swift */,
+				4C220D95343F462D998C89F0 /* LocationPublisher.swift */,
+				5879AC56A81946EF9155C774 /* SessionStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		F860CBECCCDC40FABF184234 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				80F794E0211C47C7960EA72B /* AccountView.swift */,
+				DB362E5D130746F9995D00CE /* BookingDetailView.swift */,
+				02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */,
+				5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */,
+				C0F866DEE350426AA01501E6 /* LoginView.swift */,
+				CE0EB547438248C79C98CF77 /* MainTabView.swift */,
+				B3EF3E283B864B608D3553EB /* PlumbersListView.swift */,
+				483503BE37D54A059F8A16A2 /* RootView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		620AF2E8F6FC40639B27AB37 /* KapanServicePlumbers */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC4CCE053EA245E1B8A79E57 /* Build configuration list for PBXNativeTarget "KapanServicePlumbers" */;
+			buildPhases = (
+				FC2BBFCD0F75479D92DA4F71 /* Sources */,
+				664CC0A174E7472594EA3A91 /* Frameworks */,
+				22D4DCCB60824C9D9721371C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KapanServicePlumbers;
+			productName = KapanServicePlumbers;
+			productReference = AB41AD57CFBB43FF8004474B /* KapanServicePlumbers.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7AF0A4EEBE34409FAA5A6B48 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = D02F77F5A6514FFDAA467AA2 /* Build configuration list for PBXProject "KapanServicePlumbers" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F2324E3B6C904868A4CCF865;
+			productRefGroup = 4A1A401B486A4E45A9531036 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				620AF2E8F6FC40639B27AB37 /* KapanServicePlumbers */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		22D4DCCB60824C9D9721371C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FC2BBFCD0F75479D92DA4F71 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				438CF38BE786445692F5CBB0 /* KapanServicePlumbersApp.swift in Sources */,
+				89E9D361955948F1B897D39C /* Models.swift in Sources */,
+				4208FAABDA9E47EAB0D59E0E /* APIClient.swift in Sources */,
+				F8BF27123428464492922D27 /* LocationPublisher.swift in Sources */,
+				2C54CCC4DF8B4A20922B8BE6 /* SessionStore.swift in Sources */,
+				E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */,
+				D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */,
+				88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */,
+				ED4B955B34EB4233B8836C2A /* ChatView.swift in Sources */,
+				0752F67AA6BB4AEF845512B1 /* LoginView.swift in Sources */,
+				A55B2893EFBD428CB2A1DF04 /* MainTabView.swift in Sources */,
+				A2866269FD984E8783AD66AA /* PlumbersListView.swift in Sources */,
+				675573AD485A433CBE70EAD0 /* RootView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1CEF4FDC27D44BED8995932E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C16A4E18611044BCB14EF86C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf-with-dsym;
+				ENABLE_NS_ASSERTIONS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		6D0BF25E4A224CB184341DBF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KapanServicePlumbers/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kapanservice.plumbers;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FB611A546B2C4230AE846522 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KapanServicePlumbers/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kapanservice.plumbers;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D02F77F5A6514FFDAA467AA2 /* Build configuration list for PBXProject "KapanServicePlumbers" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1CEF4FDC27D44BED8995932E /* Debug */,
+				C16A4E18611044BCB14EF86C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC4CCE053EA245E1B8A79E57 /* Build configuration list for PBXNativeTarget "KapanServicePlumbers" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D0BF25E4A224CB184341DBF /* Debug */,
+				FB611A546B2C4230AE846522 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 7AF0A4EEBE34409FAA5A6B48 /* Project object */;
+}
