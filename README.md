@@ -24,11 +24,6 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 - Chat → outbound SMS
 - En route location posts (approach SMS handled by API at 3 miles)
 
-## Repo note
+## Repo
 
-Preferred GitHub remote: `norik8980-ux/kapan-field-app` (create empty repo if missing, then):
-
-```bash
-git remote add origin https://github.com/norik8980-ux/kapan-field-app.git
-git push -u origin main
-```
+GitHub: [`norik8980-ux/kapan-service-app`](https://github.com/norik8980-ux/kapan-service-app)
