@@ -23,14 +23,24 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Location is used so we can notify customers when your plumber is approaching.</string>
+	<string>Location is used so we can notify customers when your plumber is approaching (within about 3 miles) during an active job.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Location is used while a job is active so customers get an approaching SMS.</string>
+	<string>While a job is active (On my way), location is used so customers get a single approaching SMS. Sharing stops when you mark Arrived or Complete.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>While a job is active, location is used so customers get an approaching SMS. Sharing stops when the job is finished.</string>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>systemBackgroundColor</string>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+		<string>location-services</string>
 	</array>
 </dict>
 </plist>

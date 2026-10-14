@@ -10,3 +10,13 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 .DS_Store
+
+# Accidental website leftovers (this branch is iOS-only)
+node_modules/
+.next/
+.env
+.env.*
+prisma/
+next-env.d.ts
+package.json
+package-lock.json

@@ -11,20 +11,24 @@ struct LoginView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Kapan Service Plumbers")
-                        .font(.largeTitle.bold())
-                        .listRowBackground(Color.clear)
-                    Text("Field app for dispatch and plumbers")
-                        .foregroundStyle(.secondary)
-                        .listRowBackground(Color.clear)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Kapan Service Plumbers")
+                            .font(.largeTitle.bold())
+                        Text("Sign in as office dispatch or plumber. Jobs, assign, chat → SMS, and approach alerts at 3 miles.")
+                            .foregroundStyle(.secondary)
+                    }
+                    .listRowBackground(Color.clear)
+                    .padding(.vertical, 4)
                 }
 
                 Section("Sign in") {
                     TextField("Email", text: $login)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
+                        .textContentType(.username)
                         .autocorrectionDisabled()
                     SecureField("Password", text: $password)
+                        .textContentType(.password)
                 }
 
                 if let error {
@@ -37,16 +41,22 @@ struct LoginView: View {
                     Button {
                         Task { await submit() }
                     } label: {
-                        if busy {
-                            ProgressView()
-                        } else {
-                            Text("Sign in")
+                        HStack {
+                            Spacer()
+                            if busy {
+                                ProgressView()
+                            } else {
+                                Text("Sign in").fontWeight(.semibold)
+                            }
+                            Spacer()
                         }
                     }
                     .disabled(busy || login.isEmpty || password.isEmpty)
+                } footer: {
+                    Text("Uses kapanservice.com mobile API. Admin and plumber accounts only.")
                 }
             }
-            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
@@ -55,7 +65,10 @@ struct LoginView: View {
         error = nil
         defer { busy = false }
         do {
-            try await session.signIn(login: login.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+            try await session.signIn(
+                login: login.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                password: password
+            )
         } catch {
             self.error = error.localizedDescription
         }

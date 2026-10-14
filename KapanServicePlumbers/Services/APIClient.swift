@@ -2,6 +2,7 @@ import Foundation
 
 enum APIError: LocalizedError {
     case unauthorized
+    case forbidden
     case server(String)
     case decoding
     case network(Error)
@@ -9,6 +10,7 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Session expired. Sign in again."
+        case .forbidden: return "You don’t have permission for that."
         case .server(let msg): return msg
         case .decoding: return "Could not read server response."
         case .network(let err): return err.localizedDescription
@@ -19,22 +21,22 @@ enum APIError: LocalizedError {
 actor APIClient {
     static let shared = APIClient()
 
-    /// Production API on kapanservice.com
+    /// Production API on kapanservice.com (`/api/mobile/*`)
     var baseURL = URL(string: "https://kapanservice.com")!
 
     private var token: String?
-    private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        return d
-    }()
-    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
 
     func setToken(_ token: String?) {
         self.token = token
     }
 
     func login(login: String, password: String) async throws -> LoginResponse {
-        try await post("/api/mobile/auth/login", body: ["login": login, "password": password], authed: false)
+        try await post(
+            "/api/mobile/auth/login",
+            body: ["login": login, "password": password],
+            authed: false
+        )
     }
 
     func me() async throws -> MobileUser {
@@ -44,7 +46,8 @@ actor APIClient {
     }
 
     func bookings(tab: String) async throws -> [MobileBooking] {
-        let r: BookingsResponse = try await get("/api/mobile/bookings?tab=\(tab)")
+        let encoded = tab.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tab
+        let r: BookingsResponse = try await get("/api/mobile/bookings?tab=\(encoded)")
         return r.bookings
     }
 
@@ -54,16 +57,19 @@ actor APIClient {
     }
 
     func updateStatus(id: String, status: String) async throws -> MobileBooking {
-        let r: BookingResponse = try await patch("/api/mobile/bookings/\(id)", body: ["status": status])
+        let r: BookingResponse = try await patch(
+            "/api/mobile/bookings/\(id)",
+            body: ["status": status]
+        )
         return r.booking
     }
 
     func assign(bookingId: String, plumberId: String?) async throws -> MobileBooking {
-        var body: [String: Any] = [:]
+        let body: [String: Any]
         if let plumberId {
-            body["plumberId"] = plumberId
+            body = ["plumberId": plumberId]
         } else {
-            body["plumberId"] = NSNull()
+            body = ["plumberId": NSNull()]
         }
         let r: BookingResponse = try await patch(
             "/api/mobile/bookings/\(bookingId)/assign",
@@ -72,9 +78,9 @@ actor APIClient {
         return r.booking
     }
 
-    func postLocation(bookingId: String, lat: Double, lng: Double) async throws {
-        struct R: Codable { let booking: MobileBooking }
-        let _: R = try await post(
+    @discardableResult
+    func postLocation(bookingId: String, lat: Double, lng: Double) async throws -> LocationPostResponse {
+        try await post(
             "/api/mobile/bookings/\(bookingId)/location",
             body: ["lat": lat, "lng": lng]
         )
@@ -98,21 +104,29 @@ actor APIClient {
         return r.plumbers
     }
 
-    func createPlumber(email: String, name: String) async throws -> CreatePlumberResponse {
-        try await post(
-            "/api/mobile/plumbers",
-            body: [
-                "email": email,
-                "name": name,
-                "generatePassword": true,
-            ]
-        )
+    func createPlumber(
+        email: String,
+        name: String,
+        generatePassword: Bool = true,
+        password: String? = nil
+    ) async throws -> CreatePlumberResponse {
+        var body: [String: Any] = [
+            "email": email,
+            "name": name,
+            "generatePassword": generatePassword,
+        ]
+        if let password, !password.isEmpty {
+            body["password"] = password
+            body["confirmPassword"] = password
+            body["generatePassword"] = false
+        }
+        return try await post("/api/mobile/plumbers", body: body)
     }
 
     // MARK: - HTTP
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
-        try await request(path, method: "GET", body: nil as [String: String]?, authed: true)
+        try await request(path, method: "GET", body: nil, authed: true)
     }
 
     private func post<T: Decodable>(_ path: String, body: [String: Any], authed: Bool = true) async throws -> T {
@@ -135,6 +149,7 @@ actor APIClient {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.timeoutInterval = 30
         if authed {
             guard let token else { throw APIError.unauthorized }
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -151,6 +166,9 @@ actor APIClient {
             }
             if http.statusCode == 401 {
                 throw APIError.unauthorized
+            }
+            if http.statusCode == 403 {
+                throw APIError.forbidden
             }
             if !(200...299).contains(http.statusCode) {
                 if let err = try? decoder.decode(APIErrorBody.self, from: data),

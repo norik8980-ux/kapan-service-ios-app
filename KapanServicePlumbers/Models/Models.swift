@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct MobileUser: Codable, Identifiable, Equatable {
     let id: String
@@ -9,6 +10,13 @@ struct MobileUser: Codable, Identifiable, Equatable {
     var isAdmin: Bool { role == "admin" }
     var isPlumber: Bool { role == "plumber" }
     var displayName: String { name.isEmpty ? email : name }
+    var roleLabel: String {
+        switch role {
+        case "admin": return "Admin / Dispatch"
+        case "plumber": return "Plumber"
+        default: return role.capitalized
+        }
+    }
 }
 
 struct ServiceInfo: Codable, Equatable {
@@ -50,6 +58,69 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let smsApproachAt: String?
     let createdAt: String
     let updatedAt: String
+
+    var statusLabel: String { FieldStatus.label(for: status) }
+    var isActiveFieldJob: Bool {
+        status == "assigned" || status == "en_route"
+    }
+    var approachSMSSent: Bool { smsApproachAt != nil }
+    var amountLabel: String {
+        let dollars = Double(amountCents) / 100.0
+        return dollars.formatted(.currency(code: "USD"))
+    }
+    var scheduledDate: Date? { ISO8601Helper.date(from: scheduledAt) }
+    var scheduledLabel: String {
+        guard let date = scheduledDate else { return scheduledAt }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+    var scheduledTimeLabel: String {
+        guard let date = scheduledDate else { return scheduledAt }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+    var telURL: URL? {
+        let digits = customerPhone.filter(\.isNumber)
+        guard !digits.isEmpty else { return nil }
+        return URL(string: "tel:\(digits)")
+    }
+    var mapsURL: URL? {
+        if let lat = jobLat, let lng = jobLng {
+            return URL(string: "http://maps.apple.com/?daddr=\(lat),\(lng)")
+        }
+        let q = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard !q.isEmpty else { return nil }
+        return URL(string: "http://maps.apple.com/?daddr=\(q)")
+    }
+}
+
+enum FieldStatus {
+    static let all = [
+        "pending", "confirmed", "assigned", "en_route", "arrived", "completed", "canceled",
+    ]
+
+    static func label(for status: String) -> String {
+        switch status {
+        case "pending": return "Pending"
+        case "confirmed": return "Confirmed"
+        case "assigned": return "Assigned"
+        case "en_route": return "En route"
+        case "arrived": return "Arrived"
+        case "completed": return "Completed"
+        case "canceled": return "Canceled"
+        default: return status.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    static func color(for status: String) -> Color {
+        switch status {
+        case "pending", "confirmed": return .orange
+        case "assigned": return .blue
+        case "en_route": return .indigo
+        case "arrived": return .teal
+        case "completed": return .green
+        case "canceled": return .secondary
+        default: return .secondary
+        }
+    }
 }
 
 struct ChatMessage: Codable, Identifiable, Equatable {
@@ -62,6 +133,20 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     let smsStatus: String
     let smsError: String
     let createdAt: String
+
+    var isOutbound: Bool { direction == "outbound" }
+    var createdLabel: String {
+        guard let date = ISO8601Helper.date(from: createdAt) else { return createdAt }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+    var senderLabel: String {
+        switch senderRole {
+        case "admin": return "Office"
+        case "plumber": return "Plumber"
+        case "customer": return "Customer"
+        default: return senderRole.capitalized
+        }
+    }
 }
 
 struct PlumberAccount: Codable, Identifiable, Equatable {
@@ -107,6 +192,37 @@ struct CreatePlumberResponse: Codable {
     let temporaryPassword: String?
 }
 
+struct ApproachPing: Codable, Equatable {
+    let skipped: Bool
+    let reason: String?
+    let sent: Bool?
+}
+
+struct LocationPostResponse: Codable {
+    let booking: MobileBooking
+    let approach: ApproachPing?
+    let distanceMiles: Double?
+    let approachRadiusMiles: Double?
+}
+
 struct APIErrorBody: Codable {
     let error: String?
+}
+
+enum ISO8601Helper {
+    private static let withFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let plain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static func date(from string: String) -> Date? {
+        withFractional.date(from: string) ?? plain.date(from: string)
+    }
 }

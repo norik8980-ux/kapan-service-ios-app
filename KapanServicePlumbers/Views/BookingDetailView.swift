@@ -3,19 +3,24 @@ import SwiftUI
 struct BookingDetailView: View {
     let bookingId: String
     @EnvironmentObject private var session: SessionStore
-    @StateObject private var location = LocationPublisher()
+    @EnvironmentObject private var location: LocationPublisher
 
     @State private var booking: MobileBooking?
     @State private var plumbers: [PlumberAccount] = []
     @State private var error: String?
     @State private var busy = false
+    @State private var showAssignSheet = false
 
     var body: some View {
         Group {
             if let booking {
                 content(booking)
-            } else if error != nil {
-                ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error ?? ""))
+            } else if let error {
+                ContentUnavailableView(
+                    "Couldn’t load job",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
             } else {
                 ProgressView()
             }
@@ -23,107 +28,211 @@ struct BookingDetailView: View {
         .navigationTitle("Job")
         .navigationBarTitleDisplayMode(.inline)
         .task { await reload() }
-        .onDisappear { location.stop() }
+        .sheet(isPresented: $showAssignSheet) {
+            if let booking {
+                AssignPlumberSheet(
+                    booking: booking,
+                    plumbers: plumbers.filter(\.active)
+                ) { plumberId in
+                    await assign(plumberId)
+                }
+            }
+        }
     }
 
     @ViewBuilder
     private func content(_ booking: MobileBooking) -> some View {
         List {
-            Section("Customer") {
-                LabeledContent("Name", value: booking.customerName)
-                if !booking.customerPhone.isEmpty {
-                    Link(booking.customerPhone, destination: URL(string: "tel:\(booking.customerPhone.filter(\.isNumber))")!)
-                }
-                Text(booking.address)
-                if let maps = mapsURL(for: booking) {
-                    Link("Open in Apple Maps", destination: maps)
+            if location.isSharing && location.activeBookingId == booking.id {
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Sharing location for this job", systemImage: "location.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.indigo)
+                        if let miles = location.lastDistanceMiles {
+                            Text(String(format: "%.1f miles from job · approach SMS at 3 miles", miles))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("GPS posts while status is En route. Customer gets one SMS within 3 miles.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if location.lastApproachSent || booking.approachSMSSent {
+                            Text("Approach SMS sent")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.green)
+                        }
+                        if location.permissionDenied {
+                            Text("Location permission denied. Enable it in Settings to notify the customer.")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
                 }
             }
 
-            Section("Notes") {
-                Text(booking.notes.isEmpty ? "No notes" : booking.notes)
+            Section("Customer") {
+                LabeledContent("Name", value: booking.customerName)
+                if let tel = booking.telURL {
+                    Link(destination: tel) {
+                        Label(booking.customerPhone, systemImage: "phone.fill")
+                    }
+                } else if !booking.customerPhone.isEmpty {
+                    LabeledContent("Phone", value: booking.customerPhone)
+                }
+                if !booking.customerEmail.isEmpty {
+                    LabeledContent("Email", value: booking.customerEmail)
+                }
+                Text(booking.address)
+                if let maps = booking.mapsURL {
+                    Link(destination: maps) {
+                        Label("Open in Apple Maps", systemImage: "map")
+                    }
+                }
+            }
+
+            Section("Customer notes") {
+                Text(booking.notes.isEmpty ? "No notes left at booking." : booking.notes)
                     .foregroundStyle(booking.notes.isEmpty ? .secondary : .primary)
+                    .textSelection(.enabled)
             }
 
             Section("Job") {
                 LabeledContent("Service", value: booking.service.name)
-                LabeledContent("Status", value: booking.status)
-                LabeledContent("Locale", value: booking.locale.uppercased())
-                LabeledContent("When", value: booking.scheduledAt)
+                LabeledContent("When", value: booking.scheduledLabel)
+                HStack {
+                    Text("Status")
+                    Spacer()
+                    StatusChip(status: booking.status)
+                }
+                LabeledContent("Payment", value: "\(booking.paymentStatus) · \(booking.amountLabel)")
+                LabeledContent("SMS language", value: booking.locale.uppercased())
                 if let p = booking.assignedPlumber {
                     LabeledContent("Plumber", value: p.displayName)
+                } else {
+                    LabeledContent("Plumber", value: "Unassigned")
+                }
+                if booking.approachSMSSent {
+                    LabeledContent("Approach SMS", value: "Sent")
                 }
             }
 
             if session.user?.isAdmin == true {
                 Section("Assign") {
-                    ForEach(plumbers.filter(\.active)) { p in
-                        Button(p.displayName) {
-                            Task { await assign(p.id) }
-                        }
+                    Button {
+                        showAssignSheet = true
+                    } label: {
+                        Label(
+                            booking.assignedPlumber == nil ? "Assign plumber" : "Transfer / reassign",
+                            systemImage: "person.badge.plus"
+                        )
                     }
-                    Button("Unassign", role: .destructive) {
-                        Task { await assign(nil) }
+                    if booking.assignedPlumber != nil {
+                        Button("Unassign", role: .destructive) {
+                            Task { await assign(nil) }
+                        }
                     }
                 }
             }
 
-            Section("Status") {
-                if session.user?.isPlumber == true || session.user?.isAdmin == true {
-                    statusButton("On my way", "en_route") {
+            Section("Field status") {
+                if canChangeStatus {
+                    statusButton(
+                        title: "On my way",
+                        status: "en_route",
+                        systemImage: "car.fill",
+                        enabled: booking.status != "en_route" && booking.status != "completed" && booking.status != "canceled"
+                    ) {
                         location.start(bookingId: booking.id)
                     }
-                    statusButton("Arrived", "arrived") {
+                    statusButton(
+                        title: "Arrived",
+                        status: "arrived",
+                        systemImage: "mappin.and.ellipse",
+                        enabled: booking.status == "en_route" || booking.status == "assigned"
+                    ) {
                         location.stop()
                     }
-                    statusButton("Complete", "completed") {
+                    statusButton(
+                        title: "Complete",
+                        status: "completed",
+                        systemImage: "checkmark.circle.fill",
+                        enabled: booking.status != "completed" && booking.status != "canceled"
+                    ) {
                         location.stop()
                     }
+                } else {
+                    Text("Only the assigned plumber or admin can update field status.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
             Section {
-                NavigationLink("Chat (SMS)") {
-                    ChatView(bookingId: booking.id)
+                NavigationLink {
+                    ChatView(bookingId: booking.id, customerName: booking.customerName)
+                } label: {
+                    Label("Chat → customer SMS", systemImage: "bubble.left.and.bubble.right")
                 }
+            } footer: {
+                Text("Messages send as SMS to the customer phone. Inbound replies are not in this MVP.")
             }
 
-            if let err = location.lastError {
+            if let err = location.lastError, location.activeBookingId == booking.id {
                 Section {
                     Text(err).foregroundStyle(.red).font(.caption)
                 }
             }
             if let error {
-                Section { Text(error).foregroundStyle(.red) }
+                Section {
+                    Text(error).foregroundStyle(.red)
+                }
             }
         }
         .disabled(busy)
         .refreshable { await reload() }
     }
 
-    private func statusButton(_ title: String, _ status: String, extra: @escaping () -> Void = {}) -> some View {
-        Button(title) {
+    private var canChangeStatus: Bool {
+        guard let user = session.user else { return false }
+        if user.isAdmin { return true }
+        if user.isPlumber {
+            return booking?.assignedPlumberId == user.id
+        }
+        return false
+    }
+
+    private func statusButton(
+        title: String,
+        status: String,
+        systemImage: String,
+        enabled: Bool,
+        extra: @escaping () -> Void = {}
+    ) -> some View {
+        Button {
             Task {
                 await setStatus(status)
                 extra()
             }
+        } label: {
+            Label(title, systemImage: systemImage)
         }
-    }
-
-    private func mapsURL(for booking: MobileBooking) -> URL? {
-        let q = booking.address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "http://maps.apple.com/?daddr=\(q)")
+        .disabled(!enabled || busy)
     }
 
     private func reload() async {
         error = nil
         do {
-            booking = try await APIClient.shared.booking(id: bookingId)
+            let loaded = try await APIClient.shared.booking(id: bookingId)
+            booking = loaded
             if session.user?.isAdmin == true {
                 plumbers = try await APIClient.shared.plumbers()
             }
+            location.sync(with: loaded, isPlumber: session.user?.isPlumber == true)
         } catch {
             self.error = error.localizedDescription
+            await session.handleUnauthorized(error)
         }
     }
 
@@ -132,8 +241,10 @@ struct BookingDetailView: View {
         defer { busy = false }
         do {
             booking = try await APIClient.shared.updateStatus(id: bookingId, status: status)
+            error = nil
         } catch {
             self.error = error.localizedDescription
+            await session.handleUnauthorized(error)
         }
     }
 
@@ -142,8 +253,74 @@ struct BookingDetailView: View {
         defer { busy = false }
         do {
             booking = try await APIClient.shared.assign(bookingId: bookingId, plumberId: plumberId)
+            showAssignSheet = false
+            error = nil
         } catch {
             self.error = error.localizedDescription
+            await session.handleUnauthorized(error)
+        }
+    }
+}
+
+struct AssignPlumberSheet: View {
+    let booking: MobileBooking
+    let plumbers: [PlumberAccount]
+    let onAssign: (String?) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var busy = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(booking.customerName).font(.headline)
+                    Text(booking.address).font(.caption).foregroundStyle(.secondary)
+                    if let current = booking.assignedPlumber {
+                        Text("Currently: \(current.displayName)")
+                            .font(.caption)
+                    }
+                }
+
+                Section("Choose plumber") {
+                    if plumbers.isEmpty {
+                        Text("No active plumbers. Add one in the Plumbers tab.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(plumbers) { p in
+                        Button {
+                            Task {
+                                busy = true
+                                await onAssign(p.id)
+                                busy = false
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(p.displayName)
+                                    Text(p.email).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if booking.assignedPlumberId == p.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        }
+                        .disabled(busy)
+                    }
+                }
+            }
+            .navigationTitle("Assign")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .overlay {
+                if busy { ProgressView() }
+            }
         }
     }
 }

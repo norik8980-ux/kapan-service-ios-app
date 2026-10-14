@@ -43,4 +43,11 @@ final class SessionStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: tokenKey)
         await APIClient.shared.setToken(nil)
     }
+
+    /// Clear local session when API returns 401.
+    func handleUnauthorized(_ error: Error) async {
+        if let api = error as? APIError, case .unauthorized = api {
+            await signOut()
+        }
+    }
 }
