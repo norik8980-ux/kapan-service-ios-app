@@ -12,86 +12,34 @@ struct AccountView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let user = session.user {
-                    Section {
-                        LabeledContent("Name", value: user.displayName)
-                        LabeledContent("Email", value: user.email)
-                        HStack {
-                            Text("Role")
-                            Spacer()
-                            RoleBadge(role: user.role)
-                        }
-                    } header: {
-                        Text("Signed in")
-                    }
-                }
+            ZStack {
+                KapanTheme.canvasGradient
 
-                Section("Location") {
-                    LabeledContent("Permission", value: locationPermissionLabel)
-                    if location.isSharing, let id = location.activeBookingId {
-                        LabeledContent("Sharing for job", value: String(id.prefix(8)) + "…")
-                        Button("Stop sharing", role: .destructive) {
-                            location.stop()
-                        }
-                    } else if session.user?.isPlumber == true {
-                        Text("Shared only while a job is En route.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                ScrollView {
+                    VStack(spacing: 24) {
+                        identityCard
+                            .padding(.top, 8)
 
-                if showDeveloper || AppConfig.isUsingOverride {
-                    Section {
-                        LabeledContent("Host", value: AppConfig.displayHost)
-                        if AppConfig.isUsingOverride {
-                            Text("Custom base URL — not production.")
+                        if let locationNote {
+                            Text(locationNote)
                                 .font(.caption)
-                                .foregroundStyle(KapanTheme.orangeDeep)
+                                .foregroundStyle(KapanTheme.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
                         }
-                        Button("Change API base URL…") {
-                            apiOverrideDraft = AppConfig.overrideString
-                                ?? AppConfig.productionBaseURL.absoluteString
-                            apiError = nil
-                            showAPISettings = true
-                        }
-                        if AppConfig.isUsingOverride {
-                            Button("Reset to production") {
-                                Task {
-                                    location.stop()
-                                    await session.resetAPIBaseURLToProduction()
-                                }
-                            }
-                        }
-                        if let apiError {
-                            Text(apiError).font(.caption).foregroundStyle(KapanTheme.destructive)
-                        }
-                    } header: {
-                        Text("Developer")
-                    } footer: {
-                        Text("Changing the host signs you out.")
-                    }
-                }
 
-                Section("About") {
-                    Text(KapanTheme.brandName)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(KapanTheme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onLongPressGesture(minimumDuration: 1.2) {
-                            withAnimation { showDeveloper = true }
+                        if showDeveloper || AppConfig.isUsingOverride {
+                            developerCard
                         }
-                        .accessibilityHint("Long-press for developer options")
-                }
 
-                Section {
-                    Button("Sign out", role: .destructive) {
-                        confirmSignOut = true
+                        signOutButton
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
                 }
             }
             .navigationTitle("Account")
+            .navigationBarTitleDisplayMode(.large)
             .tint(KapanTheme.orange)
             .confirmationDialog(
                 "Sign out?",
@@ -121,15 +69,124 @@ struct AccountView: View {
         }
     }
 
-    private var locationPermissionLabel: String {
-        switch location.authorization {
-        case .notDetermined: return "Not asked yet"
-        case .restricted: return "Restricted"
-        case .denied: return "Denied"
-        case .authorizedAlways: return "Always"
-        case .authorizedWhenInUse: return "While using"
-        @unknown default: return "Unknown"
+    private var identityCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(session.user?.displayName ?? "Account")
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(KapanTheme.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onLongPressGesture(minimumDuration: 1.2) {
+                    withAnimation { showDeveloper = true }
+                }
+                .accessibilityHint("Long-press for developer options")
+
+            if let email = session.user?.email {
+                Text(email)
+                    .font(.subheadline)
+                    .foregroundStyle(KapanTheme.muted)
+            }
+
+            if let user = session.user, user.isAdmin {
+                Text(user.roleLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(KapanTheme.blue)
+            }
         }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(KapanTheme.border, lineWidth: 1)
+        )
+        .shadow(color: KapanTheme.ink.opacity(0.06), radius: 12, y: 4)
+    }
+
+    /// Quiet status only when location is actively relevant (sharing or blocked).
+    private var locationNote: String? {
+        if location.isSharing {
+            return "Sharing location for the active job."
+        }
+        if session.user?.isPlumber == true, location.permissionDenied {
+            return "Location is off — enable it in Settings for En route jobs."
+        }
+        return nil
+    }
+
+    private var developerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Developer")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+
+            LabeledContent("Host", value: AppConfig.displayHost)
+                .font(.subheadline)
+
+            if AppConfig.isUsingOverride {
+                Text("Custom base URL — not production.")
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.orangeDeep)
+            }
+
+            Button("Change API base URL…") {
+                apiOverrideDraft = AppConfig.overrideString
+                    ?? AppConfig.productionBaseURL.absoluteString
+                apiError = nil
+                showAPISettings = true
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(KapanTheme.orange)
+
+            if AppConfig.isUsingOverride {
+                Button("Reset to production") {
+                    Task {
+                        location.stop()
+                        await session.resetAPIBaseURLToProduction()
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(KapanTheme.muted)
+            }
+
+            if let apiError {
+                Text(apiError)
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.destructive)
+            }
+
+            Text("Changing the host signs you out.")
+                .font(.caption2)
+                .foregroundStyle(KapanTheme.muted)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(KapanTheme.border, lineWidth: 1)
+        )
+    }
+
+    private var signOutButton: some View {
+        Button {
+            confirmSignOut = true
+        } label: {
+            Text("Sign out")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(KapanTheme.destructive)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(KapanTheme.destructive.opacity(0.35), lineWidth: 1.5)
+        )
     }
 
     private func saveAPIOverride() async {

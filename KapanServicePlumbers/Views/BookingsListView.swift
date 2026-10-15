@@ -16,62 +16,90 @@ struct BookingsListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Picker("Tab", selection: $tab) {
-                        ForEach(tabs, id: \.0) { Text($0.1).tag($0.0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .onChange(of: tab) { _, _ in
-                        Task { await load() }
-                    }
-                }
+            ZStack {
+                KapanTheme.canvasGradient
 
+                VStack(spacing: 0) {
+                    tabPicker
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+
+                    content
+                }
+            }
+            .navigationTitle(session.user?.isAdmin == true ? "All jobs" : "My jobs")
+            .navigationBarTitleDisplayMode(.large)
+            .tint(KapanTheme.orange)
+            .navigationDestination(for: String.self) { id in
+                BookingDetailView(bookingId: id)
+            }
+            .refreshable { await load() }
+            .task { await load() }
+        }
+    }
+
+    private var tabPicker: some View {
+        Picker("Tab", selection: $tab) {
+            ForEach(tabs, id: \.0) { Text($0.1).tag($0.0) }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: tab) { _, _ in
+            Task { await load() }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if loading && bookings.isEmpty && !hasLoadedOnce {
+            LoadingStateView(message: "Loading jobs…")
+        } else if let error, bookings.isEmpty {
+            ErrorStateView(message: error) {
+                Task { await load() }
+            }
+        } else if !loading && bookings.isEmpty && error == nil && hasLoadedOnce {
+            emptyState
+        } else {
+            List {
                 if let error {
                     Section {
                         InlineErrorRow(message: error) {
                             Task { await load() }
                         }
+                        .listRowBackground(Color.white)
                     }
-                }
-
-                if !loading && bookings.isEmpty && error == nil && hasLoadedOnce {
-                    ContentUnavailableView {
-                        Label(emptyTitle, systemImage: "calendar.badge.checkmark")
-                    } description: {
-                        Text(emptySubtitle)
-                    }
-                    .listRowBackground(Color.clear)
                 }
 
                 ForEach(bookings) { booking in
                     NavigationLink(value: booking.id) {
                         BookingRow(booking: booking, showAssignee: session.user?.isAdmin == true)
                     }
+                    .listRowBackground(Color.white)
+                    .listRowSeparatorTint(KapanTheme.border)
                 }
             }
-            .navigationTitle(session.user?.isAdmin == true ? "All jobs" : "My jobs")
-            .tint(KapanTheme.orange)
-            .navigationDestination(for: String.self) { id in
-                BookingDetailView(bookingId: id)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let user = session.user {
-                        RoleBadge(role: user.role)
-                    }
-                }
-            }
-            .refreshable { await load() }
-            .overlay {
-                if loading && bookings.isEmpty {
-                    LoadingStateView(message: "Loading jobs…")
-                }
-            }
-            .task { await load() }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 48)
+            Image(systemName: "calendar")
+                .font(.system(size: 36, weight: .medium))
+                .foregroundStyle(KapanTheme.blue)
+            Text(emptyTitle)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(KapanTheme.ink)
+            Text(emptySubtitle)
+                .font(.subheadline)
+                .foregroundStyle(KapanTheme.muted)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 32)
     }
 
     private var emptyTitle: String {
@@ -83,10 +111,7 @@ struct BookingsListView: View {
     }
 
     private var emptySubtitle: String {
-        if session.user?.isPlumber == true {
-            return "Assigned jobs show up here."
-        }
-        return "New bookings appear here. Pull to refresh."
+        "Pull down to refresh."
     }
 
     private func load() async {
@@ -115,11 +140,12 @@ struct BookingRow: View {
                 Text(booking.customerName)
                     .font(.headline)
                     .foregroundStyle(KapanTheme.ink)
-                Spacer()
+                Spacer(minLength: 8)
                 StatusChip(status: booking.status)
             }
             Text(booking.service.name)
                 .font(.subheadline)
+                .foregroundStyle(KapanTheme.ink.opacity(0.85))
             Text(booking.address)
                 .font(.caption)
                 .foregroundStyle(KapanTheme.muted)
@@ -137,9 +163,9 @@ struct BookingRow: View {
                 }
             }
             .font(.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(KapanTheme.muted)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 }
 

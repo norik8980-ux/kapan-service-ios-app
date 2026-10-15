@@ -13,7 +13,7 @@ SwiftUI iOS field app for Kapan Plumbing Service (**Admin / dispatch** + **plumb
 1. Open `KapanServicePlumbers.xcodeproj` in Xcode 15+
 2. Select your Development Team (Signing)
 3. Select a simulator or device
-4. API host defaults to **https://kapanservice.com**. To override for local/staging: **long-press the logo** on Login, or **long-press the app name** under Account → About (Developer section appears).
+4. API host defaults to **https://kapanservice.com**. To override for local/staging: **long-press the logo** on Login, or **long-press the display name** on Account (Developer section appears).
 5. Run (⌘R)
 
 Requires an **Apple Developer** account for device / TestFlight builds.
