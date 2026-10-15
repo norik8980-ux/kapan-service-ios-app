@@ -12,7 +12,7 @@ enum KapanTheme {
     static let destructive = Color(red: 0.839, green: 0.271, blue: 0.271) // #D64545
 
     static let brandName = "Kapan Service Plumbers"
-    static let brandTagline = "Field jobs for the shop"
+    static let brandTagline = "Dispatch and field jobs"
 
     /// Soft dual-radial wash matching the site background atmosphere.
     static var canvasGradient: some View {
