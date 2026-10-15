@@ -144,15 +144,17 @@ struct BookingsListView: View {
 
     private func load() async {
         loading = true
-        error = nil
-        defer {
-            loading = false
-            hasLoadedOnce = true
-        }
+        defer { loading = false }
         do {
-            bookings = try await APIClient.shared.bookings(tab: tab)
+            let next = try await APIClient.shared.bookings(tab: tab)
+            bookings = next
+            error = nil
+            hasLoadedOnce = true
         } catch {
+            // Aborted refresh (URLError.cancelled) must not surface as a red error card.
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
+            hasLoadedOnce = true
             await session.handleUnauthorized(error)
         }
     }

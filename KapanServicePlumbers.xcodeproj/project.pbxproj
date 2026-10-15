@@ -21,6 +21,7 @@
 		A2866269FD984E8783AD66AA /* PlumbersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF3E283B864B608D3553EB /* PlumbersListView.swift */; };
 		675573AD485A433CBE70EAD0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483503BE37D54A059F8A16A2 /* RootView.swift */; };
 		F1A2B3C4D5E647890ABCDE04 /* SupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E647890ABCDE03 /* SupportViews.swift */; };
+		D5E6F7A8B9C04152A1B2C3D4 /* SlideToActControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C04152A1B2C3D3 /* SlideToActControl.swift */; };
 		A1B2C3D4E5F6471890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6471890ABCDEF01 /* Assets.xcassets */; };
 		C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */; };
 /* End PBXBuildFile section */
@@ -43,6 +44,7 @@
 		B3EF3E283B864B608D3553EB /* PlumbersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlumbersListView.swift; sourceTree = "<group>"; };
 		483503BE37D54A059F8A16A2 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E647890ABCDE03 /* SupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportViews.swift; sourceTree = "<group>"; };
+		D5E6F7A8B9C04152A1B2C3D3 /* SlideToActControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideToActControl.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6471890ABCDEF01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KapanTheme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -126,6 +128,7 @@
 				CE0EB547438248C79C98CF77 /* MainTabView.swift */,
 				B3EF3E283B864B608D3553EB /* PlumbersListView.swift */,
 				483503BE37D54A059F8A16A2 /* RootView.swift */,
+				D5E6F7A8B9C04152A1B2C3D3 /* SlideToActControl.swift */,
 				F1A2B3C4D5E647890ABCDE03 /* SupportViews.swift */,
 			);
 			path = Views;
@@ -209,6 +212,7 @@
 				A55B2893EFBD428CB2A1DF04 /* MainTabView.swift in Sources */,
 				A2866269FD984E8783AD66AA /* PlumbersListView.swift in Sources */,
 				675573AD485A433CBE70EAD0 /* RootView.swift in Sources */,
+				D5E6F7A8B9C04152A1B2C3D4 /* SlideToActControl.swift in Sources */,
 				F1A2B3C4D5E647890ABCDE04 /* SupportViews.swift in Sources */,
 				C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */,
 			);

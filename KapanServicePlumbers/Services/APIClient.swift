@@ -16,6 +16,27 @@ enum APIError: LocalizedError {
         case .network(let err): return err.localizedDescription
         }
     }
+
+    /// Pull-to-refresh / navigation often aborts in-flight URLSession work.
+    /// Those cancellations are not user-facing failures.
+    var isCancellation: Bool {
+        if case .network(let err) = self {
+            return Self.isURLCancellation(err)
+        }
+        return false
+    }
+
+    static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let api = error as? APIError { return api.isCancellation }
+        return isURLCancellation(error)
+    }
+
+    private static func isURLCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        let ns = error as NSError
+        return ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled
+    }
 }
 
 actor APIClient {

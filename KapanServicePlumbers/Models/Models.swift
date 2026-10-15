@@ -79,9 +79,22 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return date.formatted(date: .omitted, time: .shortened)
     }
     var telURL: URL? {
-        let digits = customerPhone.filter(\.isNumber)
+        // Prefer E.164-ish digits so Phone app opens reliably (keeps leading country code).
+        let trimmed = customerPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let digits = trimmed.filter(\.isNumber)
         guard !digits.isEmpty else { return nil }
+        if trimmed.hasPrefix("+") {
+            return URL(string: "tel:+\(digits)")
+        }
         return URL(string: "tel:\(digits)")
+    }
+
+    var mailtoURL: URL? {
+        let email = customerEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !email.isEmpty else { return nil }
+        let encoded = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? email
+        return URL(string: "mailto:\(encoded)")
     }
     var mapsURL: URL? {
         if let lat = jobLat, let lng = jobLng {

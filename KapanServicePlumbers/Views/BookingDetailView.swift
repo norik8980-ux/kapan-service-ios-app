@@ -4,6 +4,7 @@ struct BookingDetailView: View {
     let bookingId: String
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var location: LocationPublisher
+    @Environment(\.openURL) private var openURL
 
     @State private var booking: MobileBooking?
     @State private var plumbers: [PlumberAccount] = []
@@ -47,144 +48,47 @@ struct BookingDetailView: View {
 
     @ViewBuilder
     private func content(_ booking: MobileBooking) -> some View {
-        List {
-            if location.isSharing && location.activeBookingId == booking.id {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label("Sharing location", systemImage: "location.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(KapanTheme.blue)
-                        if let miles = location.lastDistanceMiles {
-                            Text(String(format: "%.1f miles from job", miles))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+        ZStack {
+            KapanTheme.canvasGradient
+
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        headerCard(booking)
+                        if location.isSharing && location.activeBookingId == booking.id {
+                            locationCard(booking)
                         }
-                        if location.lastApproachSent || booking.approachSMSSent {
-                            Text("Approach SMS sent")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color(red: 0.18, green: 0.64, blue: 0.36))
+                        customerCard(booking)
+                        notesCard(booking)
+                        jobCard(booking)
+                        if session.user?.isAdmin == true {
+                            assignCard(booking)
                         }
-                        if location.permissionDenied {
-                            Text("Location permission denied — enable it in Settings.")
+                        chatCard(booking)
+                        if let err = location.lastError, location.activeBookingId == booking.id {
+                            Text(err)
                                 .font(.caption)
                                 .foregroundStyle(KapanTheme.destructive)
+                                .padding(.horizontal, 4)
+                        }
+                        if let error {
+                            InlineErrorRow(message: error) {
+                                Task { await reload() }
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, canChangeStatus ? 120 : 28)
                 }
-            }
+                .refreshable { await reload() }
 
-            Section("Customer") {
-                LabeledContent("Name", value: booking.customerName)
-                if let tel = booking.telURL {
-                    Link(destination: tel) {
-                        Label(booking.customerPhone, systemImage: "phone.fill")
-                    }
-                } else if !booking.customerPhone.isEmpty {
-                    LabeledContent("Phone", value: booking.customerPhone)
-                }
-                if !booking.customerEmail.isEmpty {
-                    LabeledContent("Email", value: booking.customerEmail)
-                }
-                Text(booking.address)
-                if let maps = booking.mapsURL {
-                    Link(destination: maps) {
-                        Label("Open in Apple Maps", systemImage: "map")
-                    }
-                }
-            }
-
-            Section("Notes") {
-                Text(booking.notes.isEmpty ? "No notes." : booking.notes)
-                    .foregroundStyle(booking.notes.isEmpty ? .secondary : .primary)
-                    .textSelection(.enabled)
-            }
-
-            Section("Job") {
-                LabeledContent("Service", value: booking.service.name)
-                LabeledContent("When", value: booking.scheduledLabel)
-                HStack {
-                    Text("Status")
-                    Spacer()
-                    StatusChip(status: booking.status)
-                }
-                LabeledContent("Payment", value: "\(booking.paymentStatus) · \(booking.amountLabel)")
-                if let p = booking.assignedPlumber {
-                    LabeledContent("Plumber", value: p.displayName)
-                } else {
-                    LabeledContent("Plumber", value: "Unassigned")
-                }
-            }
-
-            if session.user?.isAdmin == true {
-                Section("Assign") {
-                    Button {
-                        showAssignSheet = true
-                    } label: {
-                        Label(
-                            booking.assignedPlumber == nil ? "Assign plumber" : "Transfer / reassign",
-                            systemImage: "person.badge.plus"
-                        )
-                    }
-                    .disabled(busy || booking.status == "canceled" || booking.status == "completed")
-                    if booking.assignedPlumber != nil {
-                        Button("Unassign", role: .destructive) {
-                            Task { await assign(nil) }
-                        }
-                        .disabled(busy || booking.status == "canceled" || booking.status == "completed")
-                    }
-                }
-            }
-
-            Section("Field status") {
                 if canChangeStatus {
-                    statusButton(
-                        title: "On my way",
-                        status: "en_route",
-                        systemImage: "car.fill",
-                        enabled: booking.status != "en_route"
-                            && booking.status != "completed"
-                            && booking.status != "canceled"
-                            && booking.status != "arrived"
-                    )
-                    statusButton(
-                        title: "Arrived",
-                        status: "arrived",
-                        systemImage: "mappin.and.ellipse",
-                        enabled: booking.status == "en_route"
-                            || booking.status == "assigned"
-                            || booking.status == "confirmed"
-                    )
-                    statusButton(
-                        title: "Complete",
-                        status: "completed",
-                        systemImage: "checkmark.circle.fill",
-                        enabled: booking.status != "completed" && booking.status != "canceled"
-                    )
-                } else {
-                    Text(statusLockedMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section {
-                NavigationLink {
-                    ChatView(bookingId: booking.id, customerName: booking.customerName)
-                } label: {
-                    Label("Message customer", systemImage: "bubble.left.and.bubble.right")
-                }
-            }
-
-            if let err = location.lastError, location.activeBookingId == booking.id {
-                Section {
-                    Text(err).foregroundStyle(KapanTheme.destructive).font(.caption)
-                }
-            }
-            if let error {
-                Section {
-                    InlineErrorRow(message: error) {
-                        Task { await reload() }
-                    }
+                    fieldActionsBar(booking)
                 }
             }
         }
@@ -197,7 +101,305 @@ struct BookingDetailView: View {
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
-        .refreshable { await reload() }
+    }
+
+    private func headerCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(booking.customerName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(KapanTheme.ink)
+                    Text(booking.service.name)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink.opacity(0.72))
+                }
+                Spacer(minLength: 8)
+                StatusChip(status: booking.status)
+            }
+            Label(booking.scheduledLabel, systemImage: "clock")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(KapanTheme.ink.opacity(0.78))
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func locationCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Sharing location", systemImage: "location.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KapanTheme.blue)
+            if let miles = location.lastDistanceMiles {
+                Text(String(format: "%.1f miles from job", miles))
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.muted)
+            }
+            if location.lastApproachSent || booking.approachSMSSent {
+                Text("Approach SMS sent")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.18, green: 0.64, blue: 0.36))
+            }
+            if location.permissionDenied {
+                Text("Location permission denied — enable it in Settings.")
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.destructive)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func customerCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Customer")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+
+            detailIconRow(systemImage: "person.fill", tint: KapanTheme.blue) {
+                Text(booking.customerName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(KapanTheme.ink)
+            }
+
+            if let tel = booking.telURL {
+                Button {
+                    openURL(tel)
+                } label: {
+                    detailIconRow(systemImage: "phone.fill", tint: KapanTheme.orange) {
+                        Text(booking.customerPhone)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(KapanTheme.orangeDeep)
+                            .underline()
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Call \(booking.customerPhone)")
+            } else if !booking.customerPhone.isEmpty {
+                detailIconRow(systemImage: "phone.fill", tint: KapanTheme.muted) {
+                    Text(booking.customerPhone)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink)
+                }
+            }
+
+            if let mail = booking.mailtoURL {
+                Button {
+                    openURL(mail)
+                } label: {
+                    detailIconRow(systemImage: "envelope.fill", tint: KapanTheme.blue) {
+                        Text(booking.customerEmail)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(KapanTheme.ink)
+                    }
+                }
+                .buttonStyle(.plain)
+            } else if !booking.customerEmail.isEmpty {
+                detailIconRow(systemImage: "envelope.fill", tint: KapanTheme.muted) {
+                    Text(booking.customerEmail)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink)
+                }
+            }
+
+            detailIconRow(systemImage: "mappin.and.ellipse", tint: KapanTheme.blue) {
+                Text(booking.address)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(KapanTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let maps = booking.mapsURL {
+                Button {
+                    openURL(maps)
+                } label: {
+                    Label("Open in Apple Maps", systemImage: "map")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KapanTheme.blue)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func notesCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Notes")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+            Text(booking.notes.isEmpty ? "No notes." : booking.notes)
+                .font(.body)
+                .foregroundStyle(booking.notes.isEmpty ? KapanTheme.muted : KapanTheme.ink)
+                .textSelection(.enabled)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func jobCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Job")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+
+            detailIconRow(systemImage: "wrench.and.screwdriver.fill", tint: KapanTheme.orange) {
+                Text(booking.service.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(KapanTheme.ink)
+            }
+            detailIconRow(systemImage: "clock", tint: KapanTheme.blue) {
+                Text(booking.scheduledLabel)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(KapanTheme.ink)
+            }
+            detailIconRow(systemImage: "creditcard.fill", tint: KapanTheme.muted) {
+                Text("\(booking.paymentStatus) · \(booking.amountLabel)")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(KapanTheme.ink)
+            }
+            detailIconRow(systemImage: "person.fill", tint: KapanTheme.blue) {
+                Text(booking.assignedPlumber?.displayName ?? "Unassigned")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(
+                        booking.assignedPlumber == nil ? KapanTheme.orange : KapanTheme.ink
+                    )
+            }
+
+            if !canChangeStatus {
+                Text(statusLockedMessage)
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.muted)
+                    .padding(.top, 2)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func assignCard(_ booking: MobileBooking) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Assign")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+            Button {
+                showAssignSheet = true
+            } label: {
+                Label(
+                    booking.assignedPlumber == nil ? "Assign plumber" : "Transfer / reassign",
+                    systemImage: "person.badge.plus"
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+            .disabled(busy || booking.status == "canceled" || booking.status == "completed")
+            if booking.assignedPlumber != nil {
+                Button("Unassign", role: .destructive) {
+                    Task { await assign(nil) }
+                }
+                .disabled(busy || booking.status == "canceled" || booking.status == "completed")
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+    }
+
+    private func chatCard(_ booking: MobileBooking) -> some View {
+        NavigationLink {
+            ChatView(bookingId: booking.id, customerName: booking.customerName)
+        } label: {
+            Label("Message customer", systemImage: "bubble.left.and.bubble.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KapanTheme.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(detailCardBackground)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func fieldActionsBar(_ booking: MobileBooking) -> some View {
+        VStack(spacing: 10) {
+            if showsStartSlide(booking) {
+                SlideToActControl(
+                    title: "Slide to start",
+                    tint: KapanTheme.orange,
+                    systemImage: "car.fill",
+                    disabled: busy
+                ) {
+                    await setStatus("en_route")
+                }
+            }
+
+            if showsArrivedSlide(booking) {
+                SlideToActControl(
+                    title: "Slide to arrived",
+                    tint: KapanTheme.blue,
+                    systemImage: "mappin.and.ellipse",
+                    disabled: busy
+                ) {
+                    await setStatus("arrived")
+                }
+            }
+
+            if showsFinishSlide(booking) {
+                SlideToActControl(
+                    title: "Slide to finished",
+                    tint: Color(red: 0.18, green: 0.64, blue: 0.36),
+                    systemImage: "checkmark",
+                    disabled: busy
+                ) {
+                    await setStatus("completed")
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(KapanTheme.border.opacity(0.7))
+                .frame(height: 1)
+        }
+    }
+
+    private func detailIconRow<Content: View>(
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 22, alignment: .center)
+                .padding(.top, 2)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var detailCardBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(KapanTheme.border, lineWidth: 1)
+            )
+            .shadow(color: KapanTheme.ink.opacity(0.06), radius: 12, y: 4)
     }
 
     private var canChangeStatus: Bool {
@@ -216,36 +418,41 @@ struct BookingDetailView: View {
         return "Only the assigned plumber or admin can update status."
     }
 
-    private func statusButton(
-        title: String,
-        status: String,
-        systemImage: String,
-        enabled: Bool
-    ) -> some View {
-        Button {
-            Task { await setStatus(status) }
-        } label: {
-            Label(title, systemImage: systemImage)
+    private func showsStartSlide(_ booking: MobileBooking) -> Bool {
+        switch booking.status {
+        case "en_route", "arrived", "completed", "canceled":
+            return false
+        default:
+            return true
         }
-        .disabled(!enabled || busy)
+    }
+
+    private func showsArrivedSlide(_ booking: MobileBooking) -> Bool {
+        booking.status == "en_route"
+    }
+
+    private func showsFinishSlide(_ booking: MobileBooking) -> Bool {
+        booking.status == "en_route" || booking.status == "arrived"
     }
 
     private func reload() async {
-        error = nil
         loadFailed = false
         do {
             let loaded = try await APIClient.shared.booking(id: bookingId)
             booking = loaded
+            error = nil
             if session.user?.isAdmin == true {
                 do {
                     plumbers = try await APIClient.shared.plumbers()
                 } catch {
+                    if APIError.isCancellation(error) || Task.isCancelled { return }
                     self.error = "Couldn’t load plumbers list: \(error.localizedDescription)"
                     await session.handleUnauthorized(error)
                 }
             }
             location.sync(with: loaded, isPlumber: session.user?.isPlumber == true)
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             if booking == nil {
                 loadFailed = true
@@ -277,6 +484,7 @@ struct BookingDetailView: View {
                 location.stop()
             }
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
         }
@@ -291,6 +499,7 @@ struct BookingDetailView: View {
             showAssignSheet = false
             error = nil
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
         }
