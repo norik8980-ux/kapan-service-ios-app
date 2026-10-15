@@ -214,7 +214,9 @@ struct BookingDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if booking.status == "completed", !booking.canMessageCustomer || !booking.canCallCustomer || booking.isPiiMasked {
+            if booking.status == "canceled" || booking.status == "cancelled" {
+                Text("This job was canceled. Call and Message are closed; street and phone are hidden.")
+            } else if booking.status == "completed", !booking.canMessageCustomer || !booking.canCallCustomer || booking.isPiiMasked {
                 Text("Call and Message close 1 hour after the job is finished. Street and phone are hidden after that.")
                     .font(.caption)
                     .foregroundStyle(KapanTheme.muted)

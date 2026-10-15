@@ -23,7 +23,7 @@ final class SessionStore: ObservableObject {
             bootstrapped = true
         }
         await APIClient.shared.applyConfiguredBaseURL()
-        guard let saved = UserDefaults.standard.string(forKey: tokenKey), !saved.isEmpty else {
+        guard let saved = loadToken(), !saved.isEmpty else {
             return
         }
         token = saved
@@ -42,7 +42,7 @@ final class SessionStore: ObservableObject {
         let response = try await APIClient.shared.login(login: login, password: password)
         token = response.token
         user = response.user
-        UserDefaults.standard.set(response.token, forKey: tokenKey)
+        persistToken(response.token)
         await APIClient.shared.setToken(response.token)
         PushRegistration.shared.setSignedIn(true)
     }
@@ -64,7 +64,7 @@ final class SessionStore: ObservableObject {
     private func clearSessionLocally() async {
         token = nil
         user = nil
-        UserDefaults.standard.removeObject(forKey: tokenKey)
+        clearPersistedToken()
         await APIClient.shared.setToken(nil)
     }
 
@@ -80,5 +80,33 @@ final class SessionStore: ObservableObject {
         AppConfig.resetToProduction()
         await APIClient.shared.applyConfiguredBaseURL()
         await clearSessionLocally()
+    }
+
+    // MARK: - Token persistence (Keychain + UserDefaults migration)
+
+    /// Prefer Keychain; migrate any legacy UserDefaults token once.
+    private func loadToken() -> String? {
+        if let fromKeychain = KeychainStore.get(account: tokenKey), !fromKeychain.isEmpty {
+            return fromKeychain
+        }
+        guard let legacy = UserDefaults.standard.string(forKey: tokenKey), !legacy.isEmpty else {
+            return nil
+        }
+        // One-time migrate: write to Keychain, then drop insecure UserDefaults copy.
+        if KeychainStore.set(legacy, account: tokenKey) {
+            UserDefaults.standard.removeObject(forKey: tokenKey)
+        }
+        return legacy
+    }
+
+    private func persistToken(_ value: String) {
+        _ = KeychainStore.set(value, account: tokenKey)
+        // Ensure no stale plaintext copy remains after upgrades.
+        UserDefaults.standard.removeObject(forKey: tokenKey)
+    }
+
+    private func clearPersistedToken() {
+        KeychainStore.delete(account: tokenKey)
+        UserDefaults.standard.removeObject(forKey: tokenKey)
     }
 }

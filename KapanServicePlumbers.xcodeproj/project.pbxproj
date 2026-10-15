@@ -12,6 +12,7 @@
 		F1A2B3C4D5E647890ABCDE02 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E647890ABCDE01 /* AppConfig.swift */; };
 		F8BF27123428464492922D27 /* LocationPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C220D95343F462D998C89F0 /* LocationPublisher.swift */; };
 		2C54CCC4DF8B4A20922B8BE6 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5879AC56A81946EF9155C774 /* SessionStore.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* KeychainStore.swift */; };
 		E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F794E0211C47C7960EA72B /* AccountView.swift */; };
 		D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB362E5D130746F9995D00CE /* BookingDetailView.swift */; };
 		88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */; };
@@ -36,6 +37,7 @@
 		F1A2B3C4D5E647890ABCDE01 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		4C220D95343F462D998C89F0 /* LocationPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPublisher.swift; sourceTree = "<group>"; };
 		5879AC56A81946EF9155C774 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		80F794E0211C47C7960EA72B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		DB362E5D130746F9995D00CE /* BookingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingDetailView.swift; sourceTree = "<group>"; };
 		02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsListView.swift; sourceTree = "<group>"; };
@@ -118,6 +120,7 @@
 				4C220D95343F462D998C89F0 /* LocationPublisher.swift */,
 				E7F8A9B0C1D2435465768797 /* PushRegistration.swift */,
 				5879AC56A81946EF9155C774 /* SessionStore.swift */,
+				A1B2C3D4E5F60718293A4B5C /* KeychainStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -209,6 +212,7 @@
 				F1A2B3C4D5E647890ABCDE02 /* AppConfig.swift in Sources */,
 				F8BF27123428464492922D27 /* LocationPublisher.swift in Sources */,
 				2C54CCC4DF8B4A20922B8BE6 /* SessionStore.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* KeychainStore.swift in Sources */,
 				E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */,
 				D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */,
 				88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */,

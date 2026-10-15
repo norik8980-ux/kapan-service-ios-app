@@ -74,7 +74,13 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         status == "confirmed" || status == "assigned" || status == "en_route"
     }
     var approachSMSSent: Bool { smsApproachAt != nil }
-    var isPiiMasked: Bool { piiMasked ?? false }
+    var isPiiMasked: Bool {
+        if let flag = piiMasked { return flag }
+        let normalized = status.lowercased()
+        // Offline-safe: canceled jobs hide contact until a fresh payload arrives.
+        if normalized == "canceled" || normalized == "cancelled" { return true }
+        return false
+    }
     var amountLabel: String {
         let dollars = Double(amountCents) / 100.0
         return dollars.formatted(.currency(code: "USD"))
@@ -112,7 +118,10 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     }
 
     private var contactWindowOpenFallback: Bool {
-        guard status == "completed" else { return true }
+        let normalized = status.lowercased()
+        // Canceled jobs close Message/tel immediately (matches server policy).
+        if normalized == "canceled" || normalized == "cancelled" { return false }
+        guard normalized == "completed" else { return true }
         let anchor =
             ISO8601Helper.date(from: completedAt ?? "")
             ?? ISO8601Helper.date(from: updatedAt)
