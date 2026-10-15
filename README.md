@@ -42,8 +42,8 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 - Admin: assign / transfer / unassign plumber sheet (Plumbers tab)
 - Plumber + admin: Slide to start → Arrived → Complete (GPS only on plumber after successful status)
 - Location sharing while En route (throttled posts; approach SMS feedback; 401 → sign out)
-- Chat → outbound SMS (loading / empty / retry); **Message hidden on completed**
-- PII: phone / email / street masked until Slide to start; city/state/ZIP stay visible; completed stays masked
+- Chat → outbound SMS; Message + Call stay for **1 hour** after completed, then hide
+- Full phone / email / street visible as soon as the job is assigned (no mask-until-start)
 - APNs: permission + device token → `/api/mobile/devices`; tap notification opens job when `bookingId` present
 - Admin Plumbers tab: list + add (temporary password once)
 - Info.plist location purpose strings + remote-notification background mode
