@@ -61,7 +61,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
 
     var statusLabel: String { FieldStatus.label(for: status) }
     var isActiveFieldJob: Bool {
-        status == "assigned" || status == "en_route"
+        // Web admin assign may leave status as confirmed until On my way.
+        status == "confirmed" || status == "assigned" || status == "en_route"
     }
     var approachSMSSent: Bool { smsApproachAt != nil }
     var amountLabel: String {

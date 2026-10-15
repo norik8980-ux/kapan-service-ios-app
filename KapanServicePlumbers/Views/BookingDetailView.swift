@@ -150,7 +150,9 @@ struct BookingDetailView: View {
                         title: "Arrived",
                         status: "arrived",
                         systemImage: "mappin.and.ellipse",
-                        enabled: booking.status == "en_route" || booking.status == "assigned"
+                        enabled: booking.status == "en_route"
+                            || booking.status == "assigned"
+                            || booking.status == "confirmed"
                     )
                     statusButton(
                         title: "Complete",

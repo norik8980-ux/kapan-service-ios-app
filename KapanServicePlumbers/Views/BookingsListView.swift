@@ -34,7 +34,6 @@ struct BookingsListView: View {
             .navigationDestination(for: String.self) { id in
                 BookingDetailView(bookingId: id)
             }
-            .refreshable { await load() }
             .task { await load() }
         }
     }
@@ -52,13 +51,27 @@ struct BookingsListView: View {
     @ViewBuilder
     private var content: some View {
         if loading && bookings.isEmpty && !hasLoadedOnce {
-            LoadingStateView(message: "Loading jobs…")
-        } else if let error, bookings.isEmpty {
-            ErrorStateView(message: error) {
-                Task { await load() }
+            // ScrollView so pull-to-refresh works even on first load.
+            ScrollView {
+                LoadingStateView(message: "Loading jobs…")
+                    .frame(maxWidth: .infinity, minHeight: 360)
             }
+            .refreshable { await load() }
+        } else if let error, bookings.isEmpty {
+            ScrollView {
+                ErrorStateView(message: error) {
+                    Task { await load() }
+                }
+                .frame(maxWidth: .infinity, minHeight: 360)
+            }
+            .refreshable { await load() }
         } else if !loading && bookings.isEmpty && error == nil && hasLoadedOnce {
-            emptyState
+            // Empty state must be scrollable — .refreshable only works on scroll views.
+            ScrollView {
+                emptyState
+                    .frame(maxWidth: .infinity, minHeight: 420)
+            }
+            .refreshable { await load() }
         } else {
             List {
                 if let error {
@@ -80,6 +93,7 @@ struct BookingsListView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .refreshable { await load() }
         }
     }
 
@@ -106,12 +120,19 @@ struct BookingsListView: View {
         switch tab {
         case "today": return "No jobs today"
         case "completed": return "No completed jobs"
-        default: return "No upcoming jobs"
+        default: return "No open jobs"
         }
     }
 
     private var emptySubtitle: String {
-        "Pull down to refresh."
+        switch tab {
+        case "today":
+            return "Jobs scheduled for other days are under Upcoming (including overdue). Pull down to refresh."
+        case "completed":
+            return "Finished jobs show here. Open jobs are under Today or Upcoming. Pull down to refresh."
+        default:
+            return "Open assigned jobs (including past dates) show here. Check Today for today’s schedule. Pull down to refresh."
+        }
     }
 
     private func load() async {
