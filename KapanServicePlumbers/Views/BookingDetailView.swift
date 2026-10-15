@@ -314,7 +314,7 @@ struct BookingDetailView: View {
             .disabled(busy || booking.status == "canceled" || booking.status == "completed")
             if booking.assignedPlumber != nil {
                 Button("Unassign", role: .destructive) {
-                    Task { await assign(nil) }
+                    Task { _ = await assign(nil) }
                 }
                 .disabled(busy || booking.status == "canceled" || booking.status == "completed")
             }
@@ -413,9 +413,14 @@ struct BookingDetailView: View {
 
     private var canChangeStatus: Bool {
         guard let user = session.user else { return false }
+        guard let booking else { return false }
+        // Completed / canceled: no field slides (matches server plumber graph).
+        if booking.status == "completed" || booking.status == "canceled" {
+            return user.isAdmin
+        }
         if user.isAdmin { return true }
         if user.isPlumber {
-            return booking?.assignedPlumberId == user.id
+            return booking.assignedPlumberId == user.id
         }
         return false
     }
@@ -511,18 +516,23 @@ struct BookingDetailView: View {
         }
     }
 
-    private func assign(_ plumberId: String?) async {
-        guard !busy else { return }
+    /// Returns an error message for the assign sheet; nil on success.
+    @discardableResult
+    private func assign(_ plumberId: String?) async -> String? {
+        guard !busy else { return nil }
         busy = true
         defer { busy = false }
         do {
             booking = try await APIClient.shared.assign(bookingId: bookingId, plumberId: plumberId)
             showAssignSheet = false
             error = nil
+            return nil
         } catch {
-            if APIError.isCancellation(error) || Task.isCancelled { return }
-            self.error = error.localizedDescription
+            if APIError.isCancellation(error) || Task.isCancelled { return nil }
+            let message = error.localizedDescription
+            self.error = message
             await session.handleUnauthorized(error)
+            return message
         }
     }
 }
@@ -530,7 +540,8 @@ struct BookingDetailView: View {
 struct AssignPlumberSheet: View {
     let booking: MobileBooking
     let plumbers: [PlumberAccount]
-    let onAssign: (String?) async -> Void
+    /// Returns nil on success, or an error string to show in the sheet.
+    let onAssign: (String?) async -> String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var busy = false
@@ -569,7 +580,7 @@ struct AssignPlumberSheet: View {
                                 guard !busy else { return }
                                 busy = true
                                 localError = nil
-                                await onAssign(p.id)
+                                localError = await onAssign(p.id)
                                 busy = false
                             }
                         } label: {

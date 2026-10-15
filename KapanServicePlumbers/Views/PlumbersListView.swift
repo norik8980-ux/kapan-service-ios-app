@@ -153,6 +153,7 @@ struct PlumbersListView: View {
         do {
             plumbers = try await APIClient.shared.plumbers()
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
         }

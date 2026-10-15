@@ -12,7 +12,8 @@ struct ChatView: View {
     @State private var sending = false
     @State private var loading = false
     @State private var hasLoadedOnce = false
-    @State private var allowsCustomerMessaging = true
+    /// Closed until GET /messages returns flags (avoids composer flash + POST racing 403).
+    @State private var allowsCustomerMessaging = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -158,6 +159,7 @@ struct ChatView: View {
             allowsCustomerMessaging = result.allowsCustomerMessaging
             error = nil
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
         }
@@ -173,7 +175,14 @@ struct ChatView: View {
             messages.append(msg)
             draft = ""
             error = nil
+            // Soft SMS failure still returns the saved chat row.
+            if msg.smsStatus == "error" {
+                self.error = msg.smsError.isEmpty
+                    ? "Message saved, but SMS delivery failed."
+                    : "Message saved, but SMS failed: \(msg.smsError)"
+            }
         } catch {
+            if APIError.isCancellation(error) || Task.isCancelled { return }
             self.error = error.localizedDescription
             // Server closes the window with 403 — hide composer.
             if case APIError.forbidden = error {

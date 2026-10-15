@@ -127,9 +127,14 @@ actor APIClient {
     }
 
     func sendMessage(bookingId: String, body: String) async throws -> ChatMessage {
-        let r: MessageResponse = try await post(
+        // Server returns 201 on SMS ok, or 502 with the same message row when Twilio fails
+        // (chat row is already saved — treat as soft failure, not a throw).
+        let r: MessageResponse = try await request(
             "/api/mobile/bookings/\(bookingId)/messages",
-            body: ["body": body]
+            method: "POST",
+            body: ["body": body],
+            authed: true,
+            acceptStatuses: [201, 502]
         )
         return r.message
     }
@@ -194,7 +199,8 @@ actor APIClient {
         _ path: String,
         method: String,
         body: [String: Any]?,
-        authed: Bool
+        authed: Bool,
+        acceptStatuses: Set<Int>? = nil
     ) async throws -> T {
         guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else {
             throw APIError.server("Bad URL")
@@ -231,7 +237,13 @@ actor APIClient {
             if http.statusCode == 403 {
                 throw APIError.forbidden
             }
-            if !(200...299).contains(http.statusCode) {
+            let ok: Bool
+            if let acceptStatuses {
+                ok = acceptStatuses.contains(http.statusCode)
+            } else {
+                ok = (200...299).contains(http.statusCode)
+            }
+            if !ok {
                 if let err = try? decoder.decode(APIErrorBody.self, from: data),
                    let message = err.error, !message.isEmpty {
                     throw APIError.server(message)

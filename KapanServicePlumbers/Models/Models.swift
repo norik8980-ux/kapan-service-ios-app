@@ -90,14 +90,25 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     }
 
     /// Message / tel stay open for 1h after completed (server flags preferred).
+    /// Also honors `contactActionsUntil` so a stale open Job screen closes locally
+    /// after the deadline without waiting for a refresh.
     var canMessageCustomer: Bool {
+        if contactDeadlinePassed { return false }
         if let flag = allowsCustomerMessaging { return flag }
         return contactWindowOpenFallback
     }
 
     var canCallCustomer: Bool {
+        if contactDeadlinePassed { return false }
         if let flag = allowsCustomerCall { return flag }
         return contactWindowOpenFallback
+    }
+
+    private var contactDeadlinePassed: Bool {
+        guard let until = ISO8601Helper.date(from: contactActionsUntil ?? "") else {
+            return false
+        }
+        return Date() >= until
     }
 
     private var contactWindowOpenFallback: Bool {
