@@ -24,6 +24,7 @@
 		D5E6F7A8B9C04152A1B2C3D4 /* SlideToActControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C04152A1B2C3D3 /* SlideToActControl.swift */; };
 		A1B2C3D4E5F6471890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6471890ABCDEF01 /* Assets.xcassets */; };
 		C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */; };
+		E7F8A9B0C1D2435465768798 /* PushRegistration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F8A9B0C1D2435465768797 /* PushRegistration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,8 @@
 		D5E6F7A8B9C04152A1B2C3D3 /* SlideToActControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideToActControl.swift; sourceTree = "<group>"; };
 		B2C3D4E5F6471890ABCDEF01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KapanTheme.swift; sourceTree = "<group>"; };
+		E7F8A9B0C1D2435465768797 /* PushRegistration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushRegistration.swift; sourceTree = "<group>"; };
+		E7F8A9B0C1D2435465768799 /* KapanServicePlumbers.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KapanServicePlumbers.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +89,7 @@
 				C3D4E5F6471890ABCDEF0100 /* Theme */,
 				F860CBECCCDC40FABF184234 /* Views */,
 				37413AD8082245F69300C329 /* Info.plist */,
+				E7F8A9B0C1D2435465768799 /* KapanServicePlumbers.entitlements */,
 			);
 			path = KapanServicePlumbers;
 			sourceTree = "<group>";
@@ -112,6 +116,7 @@
 				F455C9B19DE34A83A37982F2 /* APIClient.swift */,
 				F1A2B3C4D5E647890ABCDE01 /* AppConfig.swift */,
 				4C220D95343F462D998C89F0 /* LocationPublisher.swift */,
+				E7F8A9B0C1D2435465768797 /* PushRegistration.swift */,
 				5879AC56A81946EF9155C774 /* SessionStore.swift */,
 			);
 			path = Services;
@@ -215,6 +220,7 @@
 				D5E6F7A8B9C04152A1B2C3D4 /* SlideToActControl.swift in Sources */,
 				F1A2B3C4D5E647890ABCDE04 /* SupportViews.swift in Sources */,
 				C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */,
+				E7F8A9B0C1D2435465768798 /* PushRegistration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +262,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KapanServicePlumbers/KapanServicePlumbers.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -278,6 +285,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KapanServicePlumbers/KapanServicePlumbers.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";

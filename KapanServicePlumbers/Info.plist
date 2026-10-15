@@ -28,6 +28,10 @@
 	<string>While a job is active (On my way), location is used so customers get a single approaching SMS. Sharing stops when you mark Arrived or Complete.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>While a job is active, location is used so customers get an approaching SMS. Sharing stops when the job is finished.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

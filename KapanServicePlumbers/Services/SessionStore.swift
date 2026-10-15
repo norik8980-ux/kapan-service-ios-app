@@ -30,6 +30,7 @@ final class SessionStore: ObservableObject {
         await APIClient.shared.setToken(saved)
         do {
             user = try await APIClient.shared.me()
+            PushRegistration.shared.setSignedIn(true)
         } catch {
             // Invalid / expired token — clear local session quietly.
             await clearSessionLocally()
@@ -43,16 +44,19 @@ final class SessionStore: ObservableObject {
         user = response.user
         UserDefaults.standard.set(response.token, forKey: tokenKey)
         await APIClient.shared.setToken(response.token)
+        PushRegistration.shared.setSignedIn(true)
     }
 
     /// Clears credentials and API token. Callers should stop location sharing first.
     func signOut() async {
+        await PushRegistration.shared.unregisterOnSignOut()
         await clearSessionLocally()
     }
 
     /// Clear local session when API returns 401.
     func handleUnauthorized(_ error: Error) async {
         if let api = error as? APIError, case .unauthorized = api {
+            await PushRegistration.shared.unregisterOnSignOut()
             await clearSessionLocally()
         }
     }

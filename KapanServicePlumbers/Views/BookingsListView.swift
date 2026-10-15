@@ -2,11 +2,13 @@ import SwiftUI
 
 struct BookingsListView: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var pushRouter: PushRouter
     @State private var tab = "upcoming"
     @State private var bookings: [MobileBooking] = []
     @State private var loading = false
     @State private var error: String?
     @State private var hasLoadedOnce = false
+    @State private var path = NavigationPath()
 
     private let tabs = [
         ("today", "Today"),
@@ -15,7 +17,7 @@ struct BookingsListView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ZStack {
                 KapanTheme.canvasGradient
 
@@ -35,6 +37,17 @@ struct BookingsListView: View {
                 BookingDetailView(bookingId: id)
             }
             .task { await load() }
+            .onChange(of: pushRouter.pendingBookingId) { _, bookingId in
+                guard let bookingId, !bookingId.isEmpty else { return }
+                path.append(bookingId)
+                _ = pushRouter.consumePendingBookingId()
+            }
+            .onAppear {
+                if let bookingId = pushRouter.pendingBookingId, !bookingId.isEmpty {
+                    path.append(bookingId)
+                    _ = pushRouter.consumePendingBookingId()
+                }
+            }
         }
     }
 

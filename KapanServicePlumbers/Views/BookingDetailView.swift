@@ -64,7 +64,9 @@ struct BookingDetailView: View {
                         if session.user?.isAdmin == true {
                             assignCard(booking)
                         }
-                        chatCard(booking)
+                        if booking.allowsCustomerMessaging {
+                            chatCard(booking)
+                        }
                         if let err = location.lastError, location.activeBookingId == booking.id {
                             Text(err)
                                 .font(.caption)
@@ -182,7 +184,8 @@ struct BookingDetailView: View {
                 detailIconRow(systemImage: "phone.fill", tint: KapanTheme.muted) {
                     Text(booking.customerPhone)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(KapanTheme.ink)
+                        .foregroundStyle(KapanTheme.ink.opacity(booking.isPiiMasked ? 0.55 : 1))
+                        .privacySensitive(booking.isPiiMasked)
                 }
             }
 
@@ -201,15 +204,27 @@ struct BookingDetailView: View {
                 detailIconRow(systemImage: "envelope.fill", tint: KapanTheme.muted) {
                     Text(booking.customerEmail)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(KapanTheme.ink)
+                        .foregroundStyle(KapanTheme.ink.opacity(booking.isPiiMasked ? 0.55 : 1))
+                        .privacySensitive(booking.isPiiMasked)
                 }
             }
 
             detailIconRow(systemImage: "mappin.and.ellipse", tint: KapanTheme.blue) {
                 Text(booking.address)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(KapanTheme.ink)
+                    .foregroundStyle(KapanTheme.ink.opacity(booking.isPiiMasked ? 0.55 : 1))
                     .fixedSize(horizontal: false, vertical: true)
+                    .privacySensitive(booking.isPiiMasked)
+            }
+
+            if booking.isPiiMasked {
+                Text(
+                    booking.status == "completed"
+                        ? "Customer contact stays hidden after the job is finished."
+                        : "Phone, email, and street unlock after you Slide to start."
+                )
+                .font(.caption)
+                .foregroundStyle(KapanTheme.muted)
             }
 
             if let maps = booking.mapsURL {

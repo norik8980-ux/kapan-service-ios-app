@@ -43,6 +43,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let customerEmail: String
     let customerPhone: String
     let address: String
+    /// Server redacted phone/email/street for this viewer (plumbers before start / after complete).
+    let piiMasked: Bool?
     let notes: String
     let locale: String
     let scheduledAt: String
@@ -59,6 +61,7 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let createdAt: String
     let updatedAt: String
 
+    var isPiiMasked: Bool { piiMasked ?? false }
     var statusLabel: String { FieldStatus.label(for: status) }
     var isActiveFieldJob: Bool {
         // Web admin assign may leave status as confirmed until On my way.
@@ -79,6 +82,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return date.formatted(date: .omitted, time: .shortened)
     }
     var telURL: URL? {
+        // Masked payloads must not open Phone with partial digits.
+        guard !isPiiMasked else { return nil }
         // Prefer E.164-ish digits so Phone app opens reliably (keeps leading country code).
         let trimmed = customerPhone.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -91,18 +96,25 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     }
 
     var mailtoURL: URL? {
+        guard !isPiiMasked else { return nil }
         let email = customerEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !email.isEmpty else { return nil }
         let encoded = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? email
         return URL(string: "mailto:\(encoded)")
     }
     var mapsURL: URL? {
+        // Prefer geocoded coords (works even when street text is masked).
         if let lat = jobLat, let lng = jobLng {
             return URL(string: "http://maps.apple.com/?daddr=\(lat),\(lng)")
         }
         let q = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         guard !q.isEmpty else { return nil }
         return URL(string: "http://maps.apple.com/?daddr=\(q)")
+    }
+
+    /// Completed jobs must not offer SMS chat.
+    var allowsCustomerMessaging: Bool {
+        status != "completed"
     }
 }
 
@@ -204,6 +216,17 @@ struct PlumbersResponse: Codable {
 struct CreatePlumberResponse: Codable {
     let plumber: PlumberAccount
     let temporaryPassword: String?
+}
+
+struct DeviceRegisterResponse: Codable {
+    struct Device: Codable {
+        let id: String
+        let deviceToken: String
+        let platform: String
+        let updatedAt: String
+    }
+    let device: Device
+    let warning: String?
 }
 
 struct ApproachPing: Codable, Equatable {

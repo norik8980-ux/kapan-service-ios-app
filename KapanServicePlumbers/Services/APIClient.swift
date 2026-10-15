@@ -158,6 +158,24 @@ actor APIClient {
         return try await post("/api/mobile/plumbers", body: body)
     }
 
+    @discardableResult
+    func registerDevice(token: String, platform: String = "ios") async throws -> DeviceRegisterResponse {
+        try await post(
+            "/api/mobile/devices",
+            body: ["deviceToken": token, "platform": platform]
+        )
+    }
+
+    func unregisterDevice(token: String) async throws {
+        struct Ok: Codable { let ok: Bool? }
+        let _: Ok = try await request(
+            "/api/mobile/devices",
+            method: "DELETE",
+            body: ["deviceToken": token],
+            authed: true
+        )
+    }
+
     // MARK: - HTTP
 
     private func get<T: Decodable>(_ path: String) async throws -> T {

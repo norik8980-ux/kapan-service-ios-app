@@ -30,6 +30,7 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 | POST | `/api/mobile/bookings/:id/location` | GPS while en_route → approach SMS @ 3 mi |
 | GET/POST | `/api/mobile/bookings/:id/messages` | chat → outbound Twilio SMS |
 | GET/POST | `/api/mobile/plumbers` | admin — list / add plumber |
+| POST/DELETE | `/api/mobile/devices` | register / unregister APNs device token |
 
 ## Features in this tree
 
@@ -39,15 +40,17 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 - Jobs list: Today / Upcoming / Done; pull-to-refresh; loading / empty / retry
 - Job detail: notes, call, Apple Maps, payment, assign, field status
 - Admin: assign / transfer / unassign plumber sheet (Plumbers tab)
-- Plumber + admin: On my way → Arrived → Complete (GPS only on plumber after successful status)
+- Plumber + admin: Slide to start → Arrived → Complete (GPS only on plumber after successful status)
 - Location sharing while En route (throttled posts; approach SMS feedback; 401 → sign out)
-- Chat → outbound SMS (loading / empty / retry)
+- Chat → outbound SMS (loading / empty / retry); **Message hidden on completed**
+- PII: phone / email / street masked until Slide to start; city/state/ZIP stay visible; completed stays masked
+- APNs: permission + device token → `/api/mobile/devices`; tap notification opens job when `bookingId` present
 - Admin Plumbers tab: list + add (temporary password once)
-- Info.plist location purpose strings
+- Info.plist location purpose strings + remote-notification background mode
 
 ## Out of MVP (later)
 
-Inbound SMS into chat, live admin map, Android, in-app turn-by-turn nav, APNs push.
+Inbound SMS into chat, live admin map, Android, in-app turn-by-turn nav.
 
 ## Transfer
 
