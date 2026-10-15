@@ -21,5 +21,6 @@ struct MainTabView: View {
             AccountView()
                 .tabItem { Label("Account", systemImage: "person.circle") }
         }
+        .tint(KapanTheme.orange)
     }
 }

@@ -26,6 +26,7 @@ struct BookingDetailView: View {
         }
         .navigationTitle("Job")
         .navigationBarTitleDisplayMode(.inline)
+        .tint(KapanTheme.orange)
         .task { await reload() }
         .onChange(of: location.sessionExpired) { _, expired in
             if expired {
@@ -47,44 +48,26 @@ struct BookingDetailView: View {
     @ViewBuilder
     private func content(_ booking: MobileBooking) -> some View {
         List {
-            if session.user?.isAdmin == true {
-                Section {
-                    Label("Dispatch — you can assign any plumber and update status.", systemImage: "person.badge.key")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } else if session.user?.isPlumber == true {
-                Section {
-                    Label("Field — share location while En route so the customer gets one approach SMS at 3 miles.", systemImage: "location.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             if location.isSharing && location.activeBookingId == booking.id {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Label("Sharing location for this job", systemImage: "location.fill")
+                        Label("Sharing location", systemImage: "location.fill")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.indigo)
+                            .foregroundStyle(KapanTheme.blue)
                         if let miles = location.lastDistanceMiles {
-                            Text(String(format: "%.1f miles from job · approach SMS at 3 miles", miles))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("GPS posts while status is En route. Customer gets one SMS within 3 miles.")
+                            Text(String(format: "%.1f miles from job", miles))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         if location.lastApproachSent || booking.approachSMSSent {
                             Text("Approach SMS sent")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.green)
+                                .foregroundStyle(Color(red: 0.18, green: 0.64, blue: 0.36))
                         }
                         if location.permissionDenied {
-                            Text("Location permission denied. Enable it in Settings to notify the customer.")
+                            Text("Location permission denied — enable it in Settings.")
                                 .font(.caption)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(KapanTheme.destructive)
                         }
                     }
                 }
@@ -110,8 +93,8 @@ struct BookingDetailView: View {
                 }
             }
 
-            Section("Customer notes") {
-                Text(booking.notes.isEmpty ? "No notes left at booking." : booking.notes)
+            Section("Notes") {
+                Text(booking.notes.isEmpty ? "No notes." : booking.notes)
                     .foregroundStyle(booking.notes.isEmpty ? .secondary : .primary)
                     .textSelection(.enabled)
             }
@@ -125,19 +108,15 @@ struct BookingDetailView: View {
                     StatusChip(status: booking.status)
                 }
                 LabeledContent("Payment", value: "\(booking.paymentStatus) · \(booking.amountLabel)")
-                LabeledContent("SMS language", value: booking.locale.uppercased())
                 if let p = booking.assignedPlumber {
                     LabeledContent("Plumber", value: p.displayName)
                 } else {
                     LabeledContent("Plumber", value: "Unassigned")
                 }
-                if booking.approachSMSSent {
-                    LabeledContent("Approach SMS", value: "Sent")
-                }
             }
 
             if session.user?.isAdmin == true {
-                Section {
+                Section("Assign") {
                     Button {
                         showAssignSheet = true
                     } label: {
@@ -153,14 +132,10 @@ struct BookingDetailView: View {
                         }
                         .disabled(busy || booking.status == "canceled" || booking.status == "completed")
                     }
-                } header: {
-                    Text("Assign (Admin)")
-                } footer: {
-                    Text("Only admins can assign or transfer. Plumbers never see this section.")
                 }
             }
 
-            Section {
+            Section("Field status") {
                 if canChangeStatus {
                     statusButton(
                         title: "On my way",
@@ -188,32 +163,19 @@ struct BookingDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            } header: {
-                Text("Field status")
-            } footer: {
-                if session.user?.isPlumber == true {
-                    Text("On my way starts location sharing. Arrived / Complete stops it. Approach SMS fires once within 3 miles.")
-                } else if session.user?.isAdmin == true {
-                    Text("Admins can update status for dispatch. Location sharing runs only on plumber devices.")
-                }
             }
 
             Section {
                 NavigationLink {
                     ChatView(bookingId: booking.id, customerName: booking.customerName)
                 } label: {
-                    Label(
-                        session.user?.isAdmin == true ? "Chat as office → SMS" : "Chat → customer SMS",
-                        systemImage: "bubble.left.and.bubble.right"
-                    )
+                    Label("Message customer", systemImage: "bubble.left.and.bubble.right")
                 }
-            } footer: {
-                Text("Messages send as SMS to the customer phone. Inbound replies are not in this MVP.")
             }
 
             if let err = location.lastError, location.activeBookingId == booking.id {
                 Section {
-                    Text(err).foregroundStyle(.red).font(.caption)
+                    Text(err).foregroundStyle(KapanTheme.destructive).font(.caption)
                 }
             }
             if let error {
@@ -228,6 +190,7 @@ struct BookingDetailView: View {
         .overlay {
             if busy {
                 ProgressView()
+                    .tint(KapanTheme.orange)
                     .padding()
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
@@ -246,9 +209,9 @@ struct BookingDetailView: View {
 
     private var statusLockedMessage: String {
         if session.user?.isPlumber == true {
-            return "This job is not assigned to you — you can’t change field status."
+            return "Not assigned to you — status locked."
         }
-        return "Only the assigned plumber or admin can update field status."
+        return "Only the assigned plumber or admin can update status."
     }
 
     private func statusButton(
@@ -275,7 +238,6 @@ struct BookingDetailView: View {
                 do {
                     plumbers = try await APIClient.shared.plumbers()
                 } catch {
-                    // Non-fatal for viewing the job; assign sheet may be empty.
                     self.error = "Couldn’t load plumbers list: \(error.localizedDescription)"
                     await session.handleUnauthorized(error)
                 }
@@ -298,7 +260,6 @@ struct BookingDetailView: View {
             let updated = try await APIClient.shared.updateStatus(id: bookingId, status: status)
             booking = updated
             error = nil
-            // Location only after a successful status change, and only for plumbers.
             if session.user?.isPlumber == true {
                 switch status {
                 case "en_route":
@@ -311,7 +272,6 @@ struct BookingDetailView: View {
                     break
                 }
             } else if location.activeBookingId == updated.id {
-                // Admin status change should not leave GPS running on this device.
                 location.stop()
             }
         } catch {
@@ -358,7 +318,7 @@ struct AssignPlumberSheet: View {
 
                 if let localError {
                     Section {
-                        Text(localError).foregroundStyle(.red).font(.subheadline)
+                        Text(localError).foregroundStyle(KapanTheme.destructive).font(.subheadline)
                     }
                 }
 
@@ -367,7 +327,7 @@ struct AssignPlumberSheet: View {
                         ContentUnavailableView {
                             Label("No active plumbers", systemImage: "person.slash")
                         } description: {
-                            Text("Add one in the Plumbers tab, then try again.")
+                            Text("Add one in the Plumbers tab.")
                         }
                         .listRowBackground(Color.clear)
                     }
@@ -389,7 +349,7 @@ struct AssignPlumberSheet: View {
                                 Spacer()
                                 if booking.assignedPlumberId == p.id {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.green)
+                                        .foregroundStyle(Color(red: 0.18, green: 0.64, blue: 0.36))
                                 }
                             }
                         }
@@ -399,6 +359,7 @@ struct AssignPlumberSheet: View {
             }
             .navigationTitle("Assign")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(KapanTheme.orange)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -406,7 +367,7 @@ struct AssignPlumberSheet: View {
                 }
             }
             .overlay {
-                if busy { ProgressView() }
+                if busy { ProgressView().tint(KapanTheme.orange) }
             }
             .interactiveDismissDisabled(busy)
         }

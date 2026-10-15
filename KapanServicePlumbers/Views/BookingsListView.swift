@@ -29,20 +29,6 @@ struct BookingsListView: View {
                     }
                 }
 
-                if session.user?.isAdmin == true {
-                    Section {
-                        Text("Dispatch view — all bookings. Assign plumbers from each job.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else if session.user?.isPlumber == true {
-                    Section {
-                        Text("Your assigned jobs only. Open a job to navigate, update status, and SMS the customer.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 if let error {
                     Section {
                         InlineErrorRow(message: error) {
@@ -67,6 +53,7 @@ struct BookingsListView: View {
                 }
             }
             .navigationTitle(session.user?.isAdmin == true ? "All jobs" : "My jobs")
+            .tint(KapanTheme.orange)
             .navigationDestination(for: String.self) { id in
                 BookingDetailView(bookingId: id)
             }
@@ -97,9 +84,9 @@ struct BookingsListView: View {
 
     private var emptySubtitle: String {
         if session.user?.isPlumber == true {
-            return "When the office assigns you a job, it shows up here."
+            return "Assigned jobs show up here."
         }
-        return "New bookings from the website appear here. Pull down to refresh."
+        return "New bookings appear here. Pull to refresh."
     }
 
     private func load() async {
@@ -127,6 +114,7 @@ struct BookingRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(booking.customerName)
                     .font(.headline)
+                    .foregroundStyle(KapanTheme.ink)
                 Spacer()
                 StatusChip(status: booking.status)
             }
@@ -134,7 +122,7 @@ struct BookingRow: View {
                 .font(.subheadline)
             Text(booking.address)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KapanTheme.muted)
                 .lineLimit(2)
             HStack {
                 Label(booking.scheduledLabel, systemImage: "clock")
@@ -144,7 +132,7 @@ struct BookingRow: View {
                         Label(p.displayName, systemImage: "person.fill")
                     } else {
                         Label("Unassigned", systemImage: "person.badge.plus")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(KapanTheme.orange)
                     }
                 }
             }

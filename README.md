@@ -13,7 +13,7 @@ SwiftUI iOS field app for Kapan Plumbing Service (**Admin / dispatch** + **plumb
 1. Open `KapanServicePlumbers.xcodeproj` in Xcode 15+
 2. Select your Development Team (Signing)
 3. Select a simulator or device
-4. API host defaults to **https://kapanservice.com** — override under **Account → Change API base URL** (or on the login screen) for local/staging
+4. API host defaults to **https://kapanservice.com**. To override for local/staging: **long-press the logo** on Login, or **long-press the app name** under Account → About (Developer section appears).
 5. Run (⌘R)
 
 Requires an **Apple Developer** account for device / TestFlight builds.
@@ -34,12 +34,13 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 ## Features in this tree
 
 - Login (Bearer token, restore session) + confirm sign-out
-- Configurable API base URL (prod default; easy local override; changing host clears session)
-- Jobs list: Today / Upcoming / Done; role-aware titles / copy; pull-to-refresh; loading / empty / retry
-- Job detail: full customer notes, call, Apple Maps, payment, locale
+- Brand UI tokens (`KapanTheme`) matching kapanservice.com (orange / blue / light canvas)
+- Configurable API base URL (prod default; hidden long-press controls; changing host clears session)
+- Jobs list: Today / Upcoming / Done; pull-to-refresh; loading / empty / retry
+- Job detail: notes, call, Apple Maps, payment, assign, field status
 - Admin: assign / transfer / unassign plumber sheet (Plumbers tab)
 - Plumber + admin: On my way → Arrived → Complete (GPS only on plumber after successful status)
-- Location sharing while En route (throttled posts; distance + approach SMS feedback; 401 → sign out)
+- Location sharing while En route (throttled posts; approach SMS feedback; 401 → sign out)
 - Chat → outbound SMS (loading / empty / retry)
 - Admin Plumbers tab: list + add (temporary password once)
 - Info.plist location purpose strings

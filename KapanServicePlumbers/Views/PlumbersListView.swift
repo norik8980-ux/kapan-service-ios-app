@@ -18,12 +18,6 @@ struct PlumbersListView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Text("Admin only — manage field plumbers. Start with 2; add more anytime. Temporary passwords are shown once after create.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 if let error {
                     Section {
                         InlineErrorRow(message: error) {
@@ -43,7 +37,7 @@ struct PlumbersListView: View {
                         } label: {
                             Label(copied ? "Copied" : "Copy password", systemImage: "doc.on.doc")
                         }
-                        Text("Share securely with the plumber, then have them change it.")
+                        Text("Share securely, then have them change it.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -54,7 +48,7 @@ struct PlumbersListView: View {
                         ContentUnavailableView {
                             Label("No plumbers yet", systemImage: "person.2")
                         } description: {
-                            Text("Tap + to add the first plumber account.")
+                            Text("Tap + to add the first plumber.")
                         }
                         .listRowBackground(Color.clear)
                     }
@@ -65,21 +59,23 @@ struct PlumbersListView: View {
                                 Spacer()
                                 Text(p.active ? "Active" : "Inactive")
                                     .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(p.active ? .green : .secondary)
+                                    .foregroundStyle(
+                                        p.active
+                                            ? Color(red: 0.18, green: 0.64, blue: 0.36)
+                                            : KapanTheme.muted
+                                    )
                             }
                             Text(p.email)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(KapanTheme.muted)
                         }
                         .padding(.vertical, 2)
                     }
                 }
             }
             .navigationTitle("Plumbers")
+            .tint(KapanTheme.orange)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    RoleBadge(role: "admin")
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         addError = nil
@@ -121,12 +117,13 @@ struct PlumbersListView: View {
                 }
                 if let addError {
                     Section {
-                        Text(addError).foregroundStyle(.red)
+                        Text(addError).foregroundStyle(KapanTheme.destructive)
                     }
                 }
             }
             .navigationTitle("Add plumber")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(KapanTheme.orange)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showAdd = false }
@@ -140,7 +137,7 @@ struct PlumbersListView: View {
                 }
             }
             .overlay {
-                if adding { ProgressView() }
+                if adding { ProgressView().tint(KapanTheme.orange) }
             }
             .interactiveDismissDisabled(adding)
         }

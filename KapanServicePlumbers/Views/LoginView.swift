@@ -11,123 +11,152 @@ struct LoginView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Kapan Service Plumbers")
-                            .font(.largeTitle.bold())
-                        Text("Office dispatch and field plumbers — jobs, assign, chat → SMS, approach alert at 3 miles.")
-                            .foregroundStyle(.secondary)
-                    }
-                    .listRowBackground(Color.clear)
-                    .padding(.vertical, 4)
-                }
+            ZStack {
+                KapanTheme.canvasGradient
 
-                Section("Sign in") {
-                    TextField("Email", text: $login)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.username)
-                        .autocorrectionDisabled()
-                        .disabled(busy)
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .disabled(busy)
-                }
+                ScrollView {
+                    VStack(spacing: 28) {
+                        brandHeader
+                            .padding(.top, 48)
 
-                if let error {
-                    Section {
-                        InlineErrorRow(message: error) {
-                            Task { await submit() }
-                        }
-                    }
-                }
+                        VStack(spacing: 16) {
+                            fieldBlock
 
-                Section {
-                    Button {
-                        Task { await submit() }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if busy {
-                                ProgressView()
-                            } else {
-                                Text("Sign in").fontWeight(.semibold)
+                            if let error {
+                                InlineErrorRow(message: error) {
+                                    Task { await submit() }
+                                }
+                                .padding(.horizontal, 4)
                             }
-                            Spacer()
+
+                            Button {
+                                Task { await submit() }
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    if busy {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Text("Sign in")
+                                            .font(.headline)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.white)
+                            .background(
+                                canSubmit && !busy
+                                    ? KapanTheme.orange
+                                    : KapanTheme.orange.opacity(0.45)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .disabled(busy || !canSubmit)
+                        }
+                        .padding(20)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(KapanTheme.border, lineWidth: 1)
+                        )
+                        .shadow(color: KapanTheme.ink.opacity(0.06), radius: 12, y: 4)
+
+                        if AppConfig.isUsingOverride {
+                            Text("Custom API host: \(AppConfig.displayHost)")
+                                .font(.caption2)
+                                .foregroundStyle(KapanTheme.orangeDeep)
                         }
                     }
-                    .disabled(busy || !canSubmit)
-                } footer: {
-                    Text("Admin sees all jobs and can assign plumbers. Plumbers see only their assigned jobs.")
-                }
-
-                Section {
-                    LabeledContent("Host", value: AppConfig.displayHost)
-                    if AppConfig.isUsingOverride {
-                        Text("Using a custom base URL (not production).")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                    Button("Change API base URL…") {
-                        apiOverrideDraft = AppConfig.overrideString ?? AppConfig.productionBaseURL.absoluteString
-                        showAPISettings = true
-                    }
-                    .disabled(busy)
-                } header: {
-                    Text("API server")
-                } footer: {
-                    Text("Default is \(AppConfig.productionBaseURL.absoluteString). Use local (e.g. \(AppConfig.localDefaultURLString)) only for development.")
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .interactiveDismissDisabled(busy)
             .sheet(isPresented: $showAPISettings) {
-                apiSettingsSheet
+                APIBaseURLSheet(
+                    draft: $apiOverrideDraft,
+                    onCancel: { showAPISettings = false },
+                    onSave: { await saveAPIOverride() }
+                )
             }
+        }
+        .tint(KapanTheme.orange)
+    }
+
+    private var brandHeader: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "wrench.and.screwdriver.fill")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 72, height: 72)
+                .background(
+                    LinearGradient(
+                        colors: [KapanTheme.orange, KapanTheme.orangeDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: KapanTheme.orange.opacity(0.35), radius: 10, y: 4)
+                .accessibilityLabel(KapanTheme.brandName)
+                .onLongPressGesture(minimumDuration: 1.2) {
+                    apiOverrideDraft = AppConfig.overrideString
+                        ?? AppConfig.productionBaseURL.absoluteString
+                    showAPISettings = true
+                }
+
+            Text(KapanTheme.brandName)
+                .font(.system(size: 28, weight: .bold, design: .default))
+                .foregroundStyle(KapanTheme.ink)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(KapanTheme.brandTagline)
+                .font(.subheadline)
+                .foregroundStyle(KapanTheme.muted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var fieldBlock: some View {
+        VStack(spacing: 12) {
+            TextField("Email", text: $login)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.emailAddress)
+                .textContentType(.username)
+                .autocorrectionDisabled()
+                .padding(14)
+                .background(KapanTheme.canvas)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(KapanTheme.border, lineWidth: 1)
+                )
+                .disabled(busy)
+
+            SecureField("Password", text: $password)
+                .textContentType(.password)
+                .padding(14)
+                .background(KapanTheme.canvas)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(KapanTheme.border, lineWidth: 1)
+                )
+                .disabled(busy)
         }
     }
 
     private var canSubmit: Bool {
         !login.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !password.isEmpty
-    }
-
-    private var apiSettingsSheet: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Base URL", text: $apiOverrideDraft)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        .autocorrectionDisabled()
-                        .textContentType(.URL)
-                } footer: {
-                    Text("Examples: https://kapanservice.com or \(AppConfig.localDefaultURLString)")
-                }
-                Section {
-                    Button("Use production") {
-                        apiOverrideDraft = AppConfig.productionBaseURL.absoluteString
-                    }
-                    Button("Use local default") {
-                        apiOverrideDraft = AppConfig.localDefaultURLString
-                    }
-                }
-            }
-            .navigationTitle("API base URL")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showAPISettings = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Task { await saveAPIOverride() }
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 
     private func saveAPIOverride() async {

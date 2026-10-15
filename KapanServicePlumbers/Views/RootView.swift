@@ -7,12 +7,17 @@ struct RootView: View {
     var body: some View {
         Group {
             if !session.bootstrapped {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Kapan Service Plumbers")
-                        .font(.headline)
-                    Text("Restoring session…")
-                        .foregroundStyle(.secondary)
+                ZStack {
+                    KapanTheme.canvasGradient
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(KapanTheme.orange)
+                        Text(KapanTheme.brandName)
+                            .font(.headline)
+                            .foregroundStyle(KapanTheme.ink)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
                 }
             } else if session.isSignedIn {
                 MainTabView()
@@ -20,6 +25,7 @@ struct RootView: View {
                 LoginView()
             }
         }
+        .tint(KapanTheme.orange)
         .animation(.easeInOut(duration: 0.2), value: session.isSignedIn)
         .animation(.easeInOut(duration: 0.2), value: session.bootstrapped)
         .onChange(of: session.isSignedIn) { _, signedIn in

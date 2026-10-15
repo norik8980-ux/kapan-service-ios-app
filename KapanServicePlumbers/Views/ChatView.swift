@@ -25,7 +25,7 @@ struct ChatView: View {
                 ContentUnavailableView {
                     Label("No messages yet", systemImage: "bubble.left")
                 } description: {
-                    Text(emptyDescription)
+                    Text("Send a text to \(customerName).")
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -50,17 +50,17 @@ struct ChatView: View {
             if let error, !messages.isEmpty {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(KapanTheme.destructive)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                     .padding(.top, 4)
             }
 
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("SMS to \(customerName)…", text: $draft, axis: .vertical)
+                TextField("Message \(customerName)…", text: $draft, axis: .vertical)
                     .lineLimit(1...5)
                     .padding(10)
-                    .background(Color(.secondarySystemBackground))
+                    .background(KapanTheme.canvas)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .disabled(sending)
                 Button {
@@ -68,29 +68,31 @@ struct ChatView: View {
                 } label: {
                     if sending {
                         ProgressView()
+                            .tint(.white)
                             .frame(width: 36, height: 36)
                     } else {
                         Image(systemName: "paperplane.fill")
                             .font(.title3)
+                            .foregroundStyle(.white)
                             .frame(width: 36, height: 36)
                     }
                 }
+                .background(
+                    draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending
+                        ? KapanTheme.orange.opacity(0.45)
+                        : KapanTheme.orange
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding()
             .background(.bar)
         }
-        .navigationTitle(session.user?.isAdmin == true ? "Office chat" : "Customer SMS")
+        .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
+        .tint(KapanTheme.orange)
         .task { await load() }
         .refreshable { await load() }
-    }
-
-    private var emptyDescription: String {
-        if session.user?.isAdmin == true {
-            return "Message \(customerName) as the office. It sends as SMS."
-        }
-        return "Send a text to \(customerName). It goes out as SMS from the company."
     }
 
     @ViewBuilder
@@ -103,7 +105,11 @@ struct ChatView: View {
                     .foregroundStyle(.secondary)
                 Text(msg.body)
                     .padding(10)
-                    .background(msg.isOutbound ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
+                    .background(
+                        msg.isOutbound
+                            ? KapanTheme.orange.opacity(0.15)
+                            : Color(.secondarySystemBackground)
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 HStack(spacing: 6) {
                     Text(msg.createdLabel)
@@ -113,7 +119,7 @@ struct ChatView: View {
                     }
                     if !msg.smsError.isEmpty {
                         Text("· \(msg.smsError)")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(KapanTheme.destructive)
                     }
                 }
                 .font(.caption2)

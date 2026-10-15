@@ -7,9 +7,10 @@ struct LoadingStateView: View {
     var body: some View {
         VStack(spacing: 12) {
             ProgressView()
+                .tint(KapanTheme.orange)
             Text(message)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KapanTheme.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -31,6 +32,7 @@ struct ErrorStateView: View {
             if let onRetry {
                 Button(retryTitle, action: onRetry)
                     .buttonStyle(.borderedProminent)
+                    .tint(KapanTheme.orange)
             }
         }
     }
@@ -44,11 +46,12 @@ struct InlineErrorRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(message)
-                .foregroundStyle(.red)
+                .foregroundStyle(KapanTheme.destructive)
                 .font(.subheadline)
             if let onRetry {
                 Button("Try again", action: onRetry)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KapanTheme.orange)
             }
         }
         .padding(.vertical, 2)
@@ -71,7 +74,7 @@ struct RoleBadge: View {
 
     private var label: String {
         switch role {
-        case "admin": return "Admin / Dispatch"
+        case "admin": return "Admin"
         case "plumber": return "Plumber"
         default: return role.capitalized
         }
@@ -79,9 +82,54 @@ struct RoleBadge: View {
 
     private var tint: Color {
         switch role {
-        case "admin": return .blue
-        case "plumber": return .teal
-        default: return .secondary
+        case "admin": return KapanTheme.blue
+        case "plumber": return KapanTheme.orangeDeep
+        default: return KapanTheme.muted
         }
+    }
+}
+
+/// Shared sheet to override API base URL (hidden from normal users).
+struct APIBaseURLSheet: View {
+    @Binding var draft: String
+    var onCancel: () -> Void
+    var onSave: () async -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Base URL", text: $draft)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled()
+                        .textContentType(.URL)
+                } footer: {
+                    Text("Examples: https://kapanservice.com or \(AppConfig.localDefaultURLString)")
+                }
+                Section {
+                    Button("Use production") {
+                        draft = AppConfig.productionBaseURL.absoluteString
+                    }
+                    Button("Use local default") {
+                        draft = AppConfig.localDefaultURLString
+                    }
+                }
+            }
+            .navigationTitle("API base URL")
+            .navigationBarTitleDisplayMode(.inline)
+            .tint(KapanTheme.orange)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        Task { await onSave() }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }

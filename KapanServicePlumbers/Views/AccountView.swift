@@ -6,6 +6,7 @@ struct AccountView: View {
 
     @State private var confirmSignOut = false
     @State private var showAPISettings = false
+    @State private var showDeveloper = false
     @State private var apiOverrideDraft = ""
     @State private var apiError: String?
 
@@ -13,7 +14,7 @@ struct AccountView: View {
         NavigationStack {
             List {
                 if let user = session.user {
-                    Section("Signed in") {
+                    Section {
                         LabeledContent("Name", value: user.displayName)
                         LabeledContent("Email", value: user.email)
                         HStack {
@@ -21,68 +22,67 @@ struct AccountView: View {
                             Spacer()
                             RoleBadge(role: user.role)
                         }
-                        Text(roleBlurb(for: user))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Signed in")
                     }
                 }
 
                 Section("Location") {
-                    LabeledContent(
-                        "Permission",
-                        value: locationPermissionLabel
-                    )
+                    LabeledContent("Permission", value: locationPermissionLabel)
                     if location.isSharing, let id = location.activeBookingId {
                         LabeledContent("Sharing for job", value: String(id.prefix(8)) + "…")
                         Button("Stop sharing", role: .destructive) {
                             location.stop()
                         }
-                    } else {
-                        Text(
-                            session.user?.isPlumber == true
-                                ? "Location is only shared while a job is En route."
-                                : "Admins do not share GPS. Plumbers share only while En route."
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    } else if session.user?.isPlumber == true {
+                        Text("Shared only while a job is En route.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                Section {
-                    LabeledContent("Host", value: AppConfig.displayHost)
-                    if AppConfig.isUsingOverride {
-                        Text("Custom base URL — not production.")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                    Button("Change API base URL…") {
-                        apiOverrideDraft = AppConfig.overrideString
-                            ?? AppConfig.productionBaseURL.absoluteString
-                        apiError = nil
-                        showAPISettings = true
-                    }
-                    if AppConfig.isUsingOverride {
-                        Button("Reset to production") {
-                            Task {
-                                location.stop()
-                                await session.resetAPIBaseURLToProduction()
+                if showDeveloper || AppConfig.isUsingOverride {
+                    Section {
+                        LabeledContent("Host", value: AppConfig.displayHost)
+                        if AppConfig.isUsingOverride {
+                            Text("Custom base URL — not production.")
+                                .font(.caption)
+                                .foregroundStyle(KapanTheme.orangeDeep)
+                        }
+                        Button("Change API base URL…") {
+                            apiOverrideDraft = AppConfig.overrideString
+                                ?? AppConfig.productionBaseURL.absoluteString
+                            apiError = nil
+                            showAPISettings = true
+                        }
+                        if AppConfig.isUsingOverride {
+                            Button("Reset to production") {
+                                Task {
+                                    location.stop()
+                                    await session.resetAPIBaseURLToProduction()
+                                }
                             }
                         }
+                        if let apiError {
+                            Text(apiError).font(.caption).foregroundStyle(KapanTheme.destructive)
+                        }
+                    } header: {
+                        Text("Developer")
+                    } footer: {
+                        Text("Changing the host signs you out.")
                     }
-                    if let apiError {
-                        Text(apiError).font(.caption).foregroundStyle(.red)
-                    }
-                } header: {
-                    Text("API server")
-                } footer: {
-                    Text("Changing the API host signs you out. Default: \(AppConfig.productionBaseURL.absoluteString)")
                 }
 
                 Section("About") {
-                    LabeledContent("App", value: "Kapan Service Plumbers")
-                    Text("Approach SMS fires once within 3 miles while En route. Chat messages send as outbound SMS.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(KapanTheme.brandName)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onLongPressGesture(minimumDuration: 1.2) {
+                            withAnimation { showDeveloper = true }
+                        }
+                        .accessibilityHint("Long-press for developer options")
                 }
 
                 Section {
@@ -92,6 +92,7 @@ struct AccountView: View {
                 }
             }
             .navigationTitle("Account")
+            .tint(KapanTheme.orange)
             .confirmationDialog(
                 "Sign out?",
                 isPresented: $confirmSignOut,
@@ -103,10 +104,14 @@ struct AccountView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Location sharing stops and you’ll need to sign in again.")
+                Text("You’ll need to sign in again.")
             }
             .sheet(isPresented: $showAPISettings) {
-                apiSettingsSheet
+                APIBaseURLSheet(
+                    draft: $apiOverrideDraft,
+                    onCancel: { showAPISettings = false },
+                    onSave: { await saveAPIOverride() }
+                )
             }
             .onChange(of: location.sessionExpired) { _, expired in
                 if expired {
@@ -114,16 +119,6 @@ struct AccountView: View {
                 }
             }
         }
-    }
-
-    private func roleBlurb(for user: MobileUser) -> String {
-        if user.isAdmin {
-            return "Admin / Dispatch: see all jobs, assign plumbers, chat as the office."
-        }
-        if user.isPlumber {
-            return "Plumber: your assigned jobs, field status, GPS while En route, customer SMS."
-        }
-        return "Limited access for this role."
     }
 
     private var locationPermissionLabel: String {
@@ -135,43 +130,6 @@ struct AccountView: View {
         case .authorizedWhenInUse: return "While using"
         @unknown default: return "Unknown"
         }
-    }
-
-    private var apiSettingsSheet: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Base URL", text: $apiOverrideDraft)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        .autocorrectionDisabled()
-                        .textContentType(.URL)
-                } footer: {
-                    Text("Examples: https://kapanservice.com or \(AppConfig.localDefaultURLString)")
-                }
-                Section {
-                    Button("Use production") {
-                        apiOverrideDraft = AppConfig.productionBaseURL.absoluteString
-                    }
-                    Button("Use local default") {
-                        apiOverrideDraft = AppConfig.localDefaultURLString
-                    }
-                }
-            }
-            .navigationTitle("API base URL")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showAPISettings = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Task { await saveAPIOverride() }
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 
     private func saveAPIOverride() async {
@@ -189,9 +147,11 @@ struct AccountView: View {
         if ok {
             apiError = nil
             showAPISettings = false
+            showDeveloper = true
         } else {
             apiError = "Enter a valid http(s) URL with a host."
             showAPISettings = false
+            showDeveloper = true
         }
     }
 }

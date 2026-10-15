@@ -12,7 +12,7 @@ struct MobileUser: Codable, Identifiable, Equatable {
     var displayName: String { name.isEmpty ? email : name }
     var roleLabel: String {
         switch role {
-        case "admin": return "Admin / Dispatch"
+        case "admin": return "Admin"
         case "plumber": return "Plumber"
         default: return role.capitalized
         }
@@ -112,13 +112,13 @@ enum FieldStatus {
 
     static func color(for status: String) -> Color {
         switch status {
-        case "pending", "confirmed": return .orange
-        case "assigned": return .blue
-        case "en_route": return .indigo
-        case "arrived": return .teal
-        case "completed": return .green
-        case "canceled": return .secondary
-        default: return .secondary
+        case "pending", "confirmed": return KapanTheme.orange
+        case "assigned": return KapanTheme.blue
+        case "en_route": return KapanTheme.orangeDeep
+        case "arrived": return KapanTheme.blue
+        case "completed": return Color(red: 0.18, green: 0.64, blue: 0.36)
+        case "canceled": return KapanTheme.muted
+        default: return KapanTheme.muted
         }
     }
 }
