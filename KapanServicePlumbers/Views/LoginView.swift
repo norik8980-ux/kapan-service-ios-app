@@ -9,8 +9,8 @@ struct LoginView: View {
     @State private var showAPISettings = false
     @State private var apiOverrideDraft = AppConfig.overrideString ?? ""
 
-    private static let emailMaxLength = 254
-    private static let passwordMaxLength = 128
+    private static let emailMaxLength = 100
+    private static let passwordMaxLength = 100
 
     var body: some View {
         NavigationStack {
