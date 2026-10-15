@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-/// Posts GPS while a plumber job is active (`assigned` / `en_route`).
+/// Posts GPS while a plumber job is active (`en_route`).
 /// Approach SMS (3 miles) is computed server-side on each ping.
 @MainActor
 final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDelegate {
@@ -11,8 +11,12 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
     @Published var lastError: String?
     @Published var lastDistanceMiles: Double?
     @Published var lastApproachSent = false
+    /// Set when a location POST returns 401 so the UI can sign out.
+    @Published var sessionExpired = false
 
     private let manager = CLLocationManager()
+    private var lastPostAt: Date?
+    private let minPostInterval: TimeInterval = 8
 
     override init() {
         super.init()
@@ -42,8 +46,9 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         isSharing = true
         lastError = nil
         lastApproachSent = false
+        sessionExpired = false
+        lastPostAt = nil
         requestPermissionIfNeeded()
-        // Keep updates while the app is in use during an active job.
         manager.startUpdatingLocation()
     }
 
@@ -51,12 +56,13 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         activeBookingId = nil
         isSharing = false
         lastDistanceMiles = nil
+        lastPostAt = nil
         manager.stopUpdatingLocation()
     }
 
-    /// Resume sharing when reopening an en-route job.
+    /// Resume sharing when a plumber reopens an en-route job.
     func sync(with booking: MobileBooking, isPlumber: Bool) {
-        guard isPlumber, booking.isActiveFieldJob, booking.status == "en_route" else {
+        guard isPlumber, booking.status == "en_route" else {
             if activeBookingId == booking.id {
                 stop()
             }
@@ -82,6 +88,10 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         guard let loc = locations.last else { return }
         Task { @MainActor in
             guard let bookingId = activeBookingId, isSharing else { return }
+            if let last = lastPostAt, Date().timeIntervalSince(last) < minPostInterval {
+                return
+            }
+            lastPostAt = Date()
             do {
                 let result = try await APIClient.shared.postLocation(
                     bookingId: bookingId,
@@ -95,6 +105,10 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
                 lastError = nil
             } catch {
                 lastError = error.localizedDescription
+                if let api = error as? APIError, case .unauthorized = api {
+                    sessionExpired = true
+                    stop()
+                }
             }
         }
     }

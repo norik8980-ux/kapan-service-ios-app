@@ -10,14 +10,22 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var error: String?
     @State private var sending = false
+    @State private var loading = false
+    @State private var hasLoadedOnce = false
 
     var body: some View {
         VStack(spacing: 0) {
-            if messages.isEmpty && error == nil {
+            if loading && messages.isEmpty {
+                LoadingStateView(message: "Loading messages…")
+            } else if let error, messages.isEmpty, hasLoadedOnce {
+                ErrorStateView(message: error) {
+                    Task { await load() }
+                }
+            } else if messages.isEmpty && hasLoadedOnce {
                 ContentUnavailableView {
                     Label("No messages yet", systemImage: "bubble.left")
                 } description: {
-                    Text("Send a text to \(customerName). It goes out as SMS.")
+                    Text(emptyDescription)
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -39,7 +47,7 @@ struct ChatView: View {
                 }
             }
 
-            if let error {
+            if let error, !messages.isEmpty {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -54,22 +62,35 @@ struct ChatView: View {
                     .padding(10)
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .disabled(sending)
                 Button {
                     Task { await send() }
                 } label: {
-                    Image(systemName: "paperplane.fill")
-                        .font(.title3)
-                        .frame(width: 36, height: 36)
+                    if sending {
+                        ProgressView()
+                            .frame(width: 36, height: 36)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .font(.title3)
+                            .frame(width: 36, height: 36)
+                    }
                 }
                 .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding()
             .background(.bar)
         }
-        .navigationTitle("Chat")
+        .navigationTitle(session.user?.isAdmin == true ? "Office chat" : "Customer SMS")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private var emptyDescription: String {
+        if session.user?.isAdmin == true {
+            return "Message \(customerName) as the office. It sends as SMS."
+        }
+        return "Send a text to \(customerName). It goes out as SMS from the company."
     }
 
     @ViewBuilder
@@ -103,6 +124,11 @@ struct ChatView: View {
     }
 
     private func load() async {
+        loading = true
+        defer {
+            loading = false
+            hasLoadedOnce = true
+        }
         do {
             messages = try await APIClient.shared.messages(bookingId: bookingId)
             error = nil
@@ -114,7 +140,7 @@ struct ChatView: View {
 
     private func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty else { return }
+        guard !body.isEmpty, !sending else { return }
         sending = true
         defer { sending = false }
         do {

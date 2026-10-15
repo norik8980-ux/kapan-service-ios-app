@@ -6,6 +6,7 @@ struct BookingsListView: View {
     @State private var bookings: [MobileBooking] = []
     @State private var loading = false
     @State private var error: String?
+    @State private var hasLoadedOnce = false
 
     private let tabs = [
         ("today", "Today"),
@@ -28,13 +29,29 @@ struct BookingsListView: View {
                     }
                 }
 
-                if let error {
+                if session.user?.isAdmin == true {
                     Section {
-                        Text(error).foregroundStyle(.red)
+                        Text("Dispatch view — all bookings. Assign plumbers from each job.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if session.user?.isPlumber == true {
+                    Section {
+                        Text("Your assigned jobs only. Open a job to navigate, update status, and SMS the customer.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                if !loading && bookings.isEmpty && error == nil {
+                if let error {
+                    Section {
+                        InlineErrorRow(message: error) {
+                            Task { await load() }
+                        }
+                    }
+                }
+
+                if !loading && bookings.isEmpty && error == nil && hasLoadedOnce {
                     ContentUnavailableView {
                         Label(emptyTitle, systemImage: "calendar.badge.checkmark")
                     } description: {
@@ -54,18 +71,16 @@ struct BookingsListView: View {
                 BookingDetailView(bookingId: id)
             }
             .toolbar {
-                if let role = session.user?.roleLabel {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Text(role)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let user = session.user {
+                        RoleBadge(role: user.role)
                     }
                 }
             }
             .refreshable { await load() }
             .overlay {
                 if loading && bookings.isEmpty {
-                    ProgressView()
+                    LoadingStateView(message: "Loading jobs…")
                 }
             }
             .task { await load() }
@@ -82,15 +97,18 @@ struct BookingsListView: View {
 
     private var emptySubtitle: String {
         if session.user?.isPlumber == true {
-            return "Assigned jobs will show up here."
+            return "When the office assigns you a job, it shows up here."
         }
-        return "New bookings from the website appear here."
+        return "New bookings from the website appear here. Pull down to refresh."
     }
 
     private func load() async {
         loading = true
         error = nil
-        defer { loading = false }
+        defer {
+            loading = false
+            hasLoadedOnce = true
+        }
         do {
             bookings = try await APIClient.shared.bookings(tab: tab)
         } catch {

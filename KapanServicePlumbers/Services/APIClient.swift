@@ -21,11 +21,19 @@ enum APIError: LocalizedError {
 actor APIClient {
     static let shared = APIClient()
 
-    /// Production API on kapanservice.com (`/api/mobile/*`)
-    var baseURL = URL(string: "https://kapanservice.com")!
+    /// Production default: https://kapanservice.com — override via AppConfig / Account.
+    private(set) var baseURL: URL = AppConfig.baseURL
 
     private var token: String?
     private let decoder = JSONDecoder()
+
+    func applyConfiguredBaseURL() {
+        baseURL = AppConfig.baseURL
+    }
+
+    func setBaseURL(_ url: URL) {
+        baseURL = url
+    }
 
     func setToken(_ token: String?) {
         self.token = token

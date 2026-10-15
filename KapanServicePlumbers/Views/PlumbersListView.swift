@@ -5,10 +5,13 @@ struct PlumbersListView: View {
     @EnvironmentObject private var session: SessionStore
     @State private var plumbers: [PlumberAccount] = []
     @State private var error: String?
+    @State private var loading = false
+    @State private var hasLoadedOnce = false
     @State private var showAdd = false
     @State private var newEmail = ""
     @State private var newName = ""
     @State private var adding = false
+    @State private var addError: String?
     @State private var tempPassword: String?
     @State private var copied = false
 
@@ -16,14 +19,16 @@ struct PlumbersListView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Start with 2 plumbers; add more anytime. Temporary passwords are shown once after create.")
+                    Text("Admin only — manage field plumbers. Start with 2; add more anytime. Temporary passwords are shown once after create.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 if let error {
                     Section {
-                        Text(error).foregroundStyle(.red)
+                        InlineErrorRow(message: error) {
+                            Task { await load() }
+                        }
                     }
                 }
 
@@ -45,9 +50,13 @@ struct PlumbersListView: View {
                 }
 
                 Section("Team (\(plumbers.count))") {
-                    if plumbers.isEmpty {
-                        Text("No plumbers yet.")
-                            .foregroundStyle(.secondary)
+                    if !loading && plumbers.isEmpty && error == nil && hasLoadedOnce {
+                        ContentUnavailableView {
+                            Label("No plumbers yet", systemImage: "person.2")
+                        } description: {
+                            Text("Tap + to add the first plumber account.")
+                        }
+                        .listRowBackground(Color.clear)
                     }
                     ForEach(plumbers) { p in
                         VStack(alignment: .leading, spacing: 4) {
@@ -68,57 +77,84 @@ struct PlumbersListView: View {
             }
             .navigationTitle("Plumbers")
             .toolbar {
-                Button {
-                    showAdd = true
-                } label: {
-                    Image(systemName: "plus")
+                ToolbarItem(placement: .topBarLeading) {
+                    RoleBadge(role: "admin")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        addError = nil
+                        showAdd = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add plumber")
                 }
             }
             .sheet(isPresented: $showAdd) {
-                NavigationStack {
-                    Form {
-                        Section {
-                            TextField("Email", text: $newEmail)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                .textContentType(.emailAddress)
-                                .autocorrectionDisabled()
-                            TextField("Name", text: $newName)
-                                .textContentType(.name)
-                        } footer: {
-                            Text("A temporary password is generated automatically.")
-                        }
-                        if let error {
-                            Section { Text(error).foregroundStyle(.red) }
-                        }
-                    }
-                    .navigationTitle("Add plumber")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showAdd = false }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Add") {
-                                Task { await add() }
-                            }
-                            .disabled(adding || newEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
-                    .overlay {
-                        if adding { ProgressView() }
-                    }
-                }
+                addPlumberSheet
             }
             .task { await load() }
             .refreshable { await load() }
+            .overlay {
+                if loading && plumbers.isEmpty {
+                    LoadingStateView(message: "Loading plumbers…")
+                }
+            }
+        }
+    }
+
+    private var addPlumberSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Email", text: $newEmail)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocorrectionDisabled()
+                        .disabled(adding)
+                    TextField("Name", text: $newName)
+                        .textContentType(.name)
+                        .disabled(adding)
+                } footer: {
+                    Text("A temporary password is generated automatically.")
+                }
+                if let addError {
+                    Section {
+                        Text(addError).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Add plumber")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showAdd = false }
+                        .disabled(adding)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        Task { await add() }
+                    }
+                    .disabled(adding || newEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .overlay {
+                if adding { ProgressView() }
+            }
+            .interactiveDismissDisabled(adding)
         }
     }
 
     private func load() async {
+        loading = true
+        error = nil
+        defer {
+            loading = false
+            hasLoadedOnce = true
+        }
         do {
             plumbers = try await APIClient.shared.plumbers()
-            error = nil
         } catch {
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
@@ -126,7 +162,9 @@ struct PlumbersListView: View {
     }
 
     private func add() async {
+        guard !adding else { return }
         adding = true
+        addError = nil
         defer { adding = false }
         do {
             let result = try await APIClient.shared.createPlumber(
@@ -141,7 +179,7 @@ struct PlumbersListView: View {
             error = nil
             await load()
         } catch {
-            self.error = error.localizedDescription
+            addError = error.localizedDescription
             await session.handleUnauthorized(error)
         }
     }

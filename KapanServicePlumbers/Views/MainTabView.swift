@@ -6,7 +6,12 @@ struct MainTabView: View {
     var body: some View {
         TabView {
             BookingsListView()
-                .tabItem { Label("Jobs", systemImage: "wrench.and.screwdriver") }
+                .tabItem {
+                    Label(
+                        session.user?.isAdmin == true ? "All jobs" : "My jobs",
+                        systemImage: "wrench.and.screwdriver"
+                    )
+                }
 
             if session.user?.isAdmin == true {
                 PlumbersListView()

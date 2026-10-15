@@ -6,6 +6,7 @@ final class SessionStore: ObservableObject {
     @Published var user: MobileUser?
     @Published var token: String?
     @Published var bootstrapped = false
+    @Published var restoring = false
 
     private let tokenKey = "kapan.mobile.token"
 
@@ -16,7 +17,12 @@ final class SessionStore: ObservableObject {
     var isSignedIn: Bool { token != nil && user != nil }
 
     func restore() async {
-        defer { bootstrapped = true }
+        restoring = true
+        defer {
+            restoring = false
+            bootstrapped = true
+        }
+        await APIClient.shared.applyConfiguredBaseURL()
         guard let saved = UserDefaults.standard.string(forKey: tokenKey), !saved.isEmpty else {
             return
         }
@@ -25,11 +31,13 @@ final class SessionStore: ObservableObject {
         do {
             user = try await APIClient.shared.me()
         } catch {
-            await signOut()
+            // Invalid / expired token — clear local session quietly.
+            await clearSessionLocally()
         }
     }
 
     func signIn(login: String, password: String) async throws {
+        await APIClient.shared.applyConfiguredBaseURL()
         let response = try await APIClient.shared.login(login: login, password: password)
         token = response.token
         user = response.user
@@ -37,17 +45,36 @@ final class SessionStore: ObservableObject {
         await APIClient.shared.setToken(response.token)
     }
 
+    /// Clears credentials and API token. Callers should stop location sharing first.
     func signOut() async {
+        await clearSessionLocally()
+    }
+
+    /// Clear local session when API returns 401.
+    func handleUnauthorized(_ error: Error) async {
+        if let api = error as? APIError, case .unauthorized = api {
+            await clearSessionLocally()
+        }
+    }
+
+    private func clearSessionLocally() async {
         token = nil
         user = nil
         UserDefaults.standard.removeObject(forKey: tokenKey)
         await APIClient.shared.setToken(nil)
     }
 
-    /// Clear local session when API returns 401.
-    func handleUnauthorized(_ error: Error) async {
-        if let api = error as? APIError, case .unauthorized = api {
-            await signOut()
-        }
+    /// Apply a new API base URL override and drop the session (token is host-scoped).
+    func applyAPIBaseURLOverride(_ raw: String?) async -> Bool {
+        guard AppConfig.setOverride(raw) else { return false }
+        await APIClient.shared.applyConfiguredBaseURL()
+        await clearSessionLocally()
+        return true
+    }
+
+    func resetAPIBaseURLToProduction() async {
+        AppConfig.resetToProduction()
+        await APIClient.shared.applyConfiguredBaseURL()
+        await clearSessionLocally()
     }
 }

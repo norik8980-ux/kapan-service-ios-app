@@ -10,24 +10,28 @@ struct BookingDetailView: View {
     @State private var error: String?
     @State private var busy = false
     @State private var showAssignSheet = false
+    @State private var loadFailed = false
 
     var body: some View {
         Group {
             if let booking {
                 content(booking)
-            } else if let error {
-                ContentUnavailableView(
-                    "Couldn’t load job",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error)
-                )
+            } else if loadFailed, let error {
+                ErrorStateView(message: error) {
+                    Task { await reload() }
+                }
             } else {
-                ProgressView()
+                LoadingStateView(message: "Loading job…")
             }
         }
         .navigationTitle("Job")
         .navigationBarTitleDisplayMode(.inline)
         .task { await reload() }
+        .onChange(of: location.sessionExpired) { _, expired in
+            if expired {
+                Task { await session.signOut() }
+            }
+        }
         .sheet(isPresented: $showAssignSheet) {
             if let booking {
                 AssignPlumberSheet(
@@ -43,6 +47,20 @@ struct BookingDetailView: View {
     @ViewBuilder
     private func content(_ booking: MobileBooking) -> some View {
         List {
+            if session.user?.isAdmin == true {
+                Section {
+                    Label("Dispatch — you can assign any plumber and update status.", systemImage: "person.badge.key")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if session.user?.isPlumber == true {
+                Section {
+                    Label("Field — share location while En route so the customer gets one approach SMS at 3 miles.", systemImage: "location.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if location.isSharing && location.activeBookingId == booking.id {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
@@ -119,7 +137,7 @@ struct BookingDetailView: View {
             }
 
             if session.user?.isAdmin == true {
-                Section("Assign") {
+                Section {
                     Button {
                         showAssignSheet = true
                     } label: {
@@ -128,44 +146,55 @@ struct BookingDetailView: View {
                             systemImage: "person.badge.plus"
                         )
                     }
+                    .disabled(busy || booking.status == "canceled" || booking.status == "completed")
                     if booking.assignedPlumber != nil {
                         Button("Unassign", role: .destructive) {
                             Task { await assign(nil) }
                         }
+                        .disabled(busy || booking.status == "canceled" || booking.status == "completed")
                     }
+                } header: {
+                    Text("Assign (Admin)")
+                } footer: {
+                    Text("Only admins can assign or transfer. Plumbers never see this section.")
                 }
             }
 
-            Section("Field status") {
+            Section {
                 if canChangeStatus {
                     statusButton(
                         title: "On my way",
                         status: "en_route",
                         systemImage: "car.fill",
-                        enabled: booking.status != "en_route" && booking.status != "completed" && booking.status != "canceled"
-                    ) {
-                        location.start(bookingId: booking.id)
-                    }
+                        enabled: booking.status != "en_route"
+                            && booking.status != "completed"
+                            && booking.status != "canceled"
+                            && booking.status != "arrived"
+                    )
                     statusButton(
                         title: "Arrived",
                         status: "arrived",
                         systemImage: "mappin.and.ellipse",
                         enabled: booking.status == "en_route" || booking.status == "assigned"
-                    ) {
-                        location.stop()
-                    }
+                    )
                     statusButton(
                         title: "Complete",
                         status: "completed",
                         systemImage: "checkmark.circle.fill",
                         enabled: booking.status != "completed" && booking.status != "canceled"
-                    ) {
-                        location.stop()
-                    }
+                    )
                 } else {
-                    Text("Only the assigned plumber or admin can update field status.")
+                    Text(statusLockedMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Field status")
+            } footer: {
+                if session.user?.isPlumber == true {
+                    Text("On my way starts location sharing. Arrived / Complete stops it. Approach SMS fires once within 3 miles.")
+                } else if session.user?.isAdmin == true {
+                    Text("Admins can update status for dispatch. Location sharing runs only on plumber devices.")
                 }
             }
 
@@ -173,7 +202,10 @@ struct BookingDetailView: View {
                 NavigationLink {
                     ChatView(bookingId: booking.id, customerName: booking.customerName)
                 } label: {
-                    Label("Chat → customer SMS", systemImage: "bubble.left.and.bubble.right")
+                    Label(
+                        session.user?.isAdmin == true ? "Chat as office → SMS" : "Chat → customer SMS",
+                        systemImage: "bubble.left.and.bubble.right"
+                    )
                 }
             } footer: {
                 Text("Messages send as SMS to the customer phone. Inbound replies are not in this MVP.")
@@ -186,11 +218,20 @@ struct BookingDetailView: View {
             }
             if let error {
                 Section {
-                    Text(error).foregroundStyle(.red)
+                    InlineErrorRow(message: error) {
+                        Task { await reload() }
+                    }
                 }
             }
         }
         .disabled(busy)
+        .overlay {
+            if busy {
+                ProgressView()
+                    .padding()
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
         .refreshable { await reload() }
     }
 
@@ -203,18 +244,21 @@ struct BookingDetailView: View {
         return false
     }
 
+    private var statusLockedMessage: String {
+        if session.user?.isPlumber == true {
+            return "This job is not assigned to you — you can’t change field status."
+        }
+        return "Only the assigned plumber or admin can update field status."
+    }
+
     private func statusButton(
         title: String,
         status: String,
         systemImage: String,
-        enabled: Bool,
-        extra: @escaping () -> Void = {}
+        enabled: Bool
     ) -> some View {
         Button {
-            Task {
-                await setStatus(status)
-                extra()
-            }
+            Task { await setStatus(status) }
         } label: {
             Label(title, systemImage: systemImage)
         }
@@ -223,25 +267,53 @@ struct BookingDetailView: View {
 
     private func reload() async {
         error = nil
+        loadFailed = false
         do {
             let loaded = try await APIClient.shared.booking(id: bookingId)
             booking = loaded
             if session.user?.isAdmin == true {
-                plumbers = try await APIClient.shared.plumbers()
+                do {
+                    plumbers = try await APIClient.shared.plumbers()
+                } catch {
+                    // Non-fatal for viewing the job; assign sheet may be empty.
+                    self.error = "Couldn’t load plumbers list: \(error.localizedDescription)"
+                    await session.handleUnauthorized(error)
+                }
             }
             location.sync(with: loaded, isPlumber: session.user?.isPlumber == true)
         } catch {
             self.error = error.localizedDescription
+            if booking == nil {
+                loadFailed = true
+            }
             await session.handleUnauthorized(error)
         }
     }
 
     private func setStatus(_ status: String) async {
+        guard !busy else { return }
         busy = true
         defer { busy = false }
         do {
-            booking = try await APIClient.shared.updateStatus(id: bookingId, status: status)
+            let updated = try await APIClient.shared.updateStatus(id: bookingId, status: status)
+            booking = updated
             error = nil
+            // Location only after a successful status change, and only for plumbers.
+            if session.user?.isPlumber == true {
+                switch status {
+                case "en_route":
+                    location.start(bookingId: updated.id)
+                case "arrived", "completed", "canceled":
+                    if location.activeBookingId == updated.id {
+                        location.stop()
+                    }
+                default:
+                    break
+                }
+            } else if location.activeBookingId == updated.id {
+                // Admin status change should not leave GPS running on this device.
+                location.stop()
+            }
         } catch {
             self.error = error.localizedDescription
             await session.handleUnauthorized(error)
@@ -249,6 +321,7 @@ struct BookingDetailView: View {
     }
 
     private func assign(_ plumberId: String?) async {
+        guard !busy else { return }
         busy = true
         defer { busy = false }
         do {
@@ -269,6 +342,7 @@ struct AssignPlumberSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var busy = false
+    @State private var localError: String?
 
     var body: some View {
         NavigationStack {
@@ -282,15 +356,27 @@ struct AssignPlumberSheet: View {
                     }
                 }
 
+                if let localError {
+                    Section {
+                        Text(localError).foregroundStyle(.red).font(.subheadline)
+                    }
+                }
+
                 Section("Choose plumber") {
                     if plumbers.isEmpty {
-                        Text("No active plumbers. Add one in the Plumbers tab.")
-                            .foregroundStyle(.secondary)
+                        ContentUnavailableView {
+                            Label("No active plumbers", systemImage: "person.slash")
+                        } description: {
+                            Text("Add one in the Plumbers tab, then try again.")
+                        }
+                        .listRowBackground(Color.clear)
                     }
                     ForEach(plumbers) { p in
                         Button {
                             Task {
+                                guard !busy else { return }
                                 busy = true
+                                localError = nil
                                 await onAssign(p.id)
                                 busy = false
                             }
@@ -316,11 +402,13 @@ struct AssignPlumberSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .disabled(busy)
                 }
             }
             .overlay {
                 if busy { ProgressView() }
             }
+            .interactiveDismissDisabled(busy)
         }
     }
 }

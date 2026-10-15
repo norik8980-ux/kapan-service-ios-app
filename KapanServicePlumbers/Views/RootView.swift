@@ -11,7 +11,7 @@ struct RootView: View {
                     ProgressView()
                     Text("Kapan Service Plumbers")
                         .font(.headline)
-                    Text("Loading…")
+                    Text("Restoring session…")
                         .foregroundStyle(.secondary)
                 }
             } else if session.isSignedIn {
@@ -20,9 +20,16 @@ struct RootView: View {
                 LoginView()
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: session.isSignedIn)
+        .animation(.easeInOut(duration: 0.2), value: session.bootstrapped)
         .onChange(of: session.isSignedIn) { _, signedIn in
             if !signedIn {
                 location.stop()
+            }
+        }
+        .onChange(of: location.sessionExpired) { _, expired in
+            if expired {
+                Task { await session.signOut() }
             }
         }
     }
