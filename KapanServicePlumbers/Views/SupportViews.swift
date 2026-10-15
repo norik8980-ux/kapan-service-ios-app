@@ -41,19 +41,23 @@ struct ErrorStateView: View {
 /// Compact inline error row for Forms / Lists.
 struct InlineErrorRow: View {
     let message: String
+    var centered: Bool = false
     var onRetry: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: centered ? .center : .leading, spacing: 8) {
             Text(message)
                 .foregroundStyle(KapanTheme.destructive)
                 .font(.subheadline)
+                .multilineTextAlignment(centered ? .center : .leading)
+                .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
             if let onRetry {
                 Button("Try again", action: onRetry)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(KapanTheme.orange)
             }
         }
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
         .padding(.vertical, 2)
     }
 }

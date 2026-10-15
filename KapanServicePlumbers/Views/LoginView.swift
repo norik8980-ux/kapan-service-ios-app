@@ -26,7 +26,7 @@ struct LoginView: View {
                             fieldBlock
 
                             if let error {
-                                InlineErrorRow(message: error)
+                                InlineErrorRow(message: error, centered: true)
                                     .padding(.horizontal, 4)
                             }
 
