@@ -9,6 +9,9 @@ struct LoginView: View {
     @State private var showAPISettings = false
     @State private var apiOverrideDraft = AppConfig.overrideString ?? ""
 
+    private static let emailMaxLength = 254
+    private static let passwordMaxLength = 128
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -23,10 +26,8 @@ struct LoginView: View {
                             fieldBlock
 
                             if let error {
-                                InlineErrorRow(message: error) {
-                                    Task { await submit() }
-                                }
-                                .padding(.horizontal, 4)
+                                InlineErrorRow(message: error)
+                                    .padding(.horizontal, 4)
                             }
 
                             Button {
@@ -140,6 +141,11 @@ struct LoginView: View {
                         .stroke(KapanTheme.border, lineWidth: 1)
                 )
                 .disabled(busy)
+                .onChange(of: login) { _, newValue in
+                    if newValue.count > Self.emailMaxLength {
+                        login = String(newValue.prefix(Self.emailMaxLength))
+                    }
+                }
 
             SecureField("Password", text: $password)
                 .textContentType(.password)
@@ -151,6 +157,11 @@ struct LoginView: View {
                         .stroke(KapanTheme.border, lineWidth: 1)
                 )
                 .disabled(busy)
+                .onChange(of: password) { _, newValue in
+                    if newValue.count > Self.passwordMaxLength {
+                        password = String(newValue.prefix(Self.passwordMaxLength))
+                    }
+                }
         }
     }
 
