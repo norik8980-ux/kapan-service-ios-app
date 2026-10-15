@@ -467,8 +467,11 @@ struct BookingDetailView: View {
         defer { busy = false }
         do {
             let updated = try await APIClient.shared.updateStatus(id: bookingId, status: status)
+            // Success: always replace local job so chips / slides match server
+            // (e.g. arrived → completed after Slide to finished).
             booking = updated
             error = nil
+            loadFailed = false
             if session.user?.isPlumber == true {
                 switch status {
                 case "en_route":
@@ -485,7 +488,16 @@ struct BookingDetailView: View {
             }
         } catch {
             if APIError.isCancellation(error) || Task.isCancelled { return }
-            self.error = error.localizedDescription
+            // Keep existing `booking` so detail stays usable after a failed finish.
+            let action: String = {
+                switch status {
+                case "en_route": return "start"
+                case "arrived": return "arrived"
+                case "completed": return "finished"
+                default: return "update"
+                }
+            }()
+            self.error = "Couldn’t mark \(action): \(error.localizedDescription)"
             await session.handleUnauthorized(error)
         }
     }

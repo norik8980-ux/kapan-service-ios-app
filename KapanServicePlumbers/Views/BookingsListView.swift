@@ -153,6 +153,7 @@ struct BookingsListView: View {
         } catch {
             // Aborted refresh (URLError.cancelled) must not surface as a red error card.
             if APIError.isCancellation(error) || Task.isCancelled { return }
+            // Keep any previously loaded rows; only empty first-loads go full-screen error.
             self.error = error.localizedDescription
             hasLoadedOnce = true
             await session.handleUnauthorized(error)

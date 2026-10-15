@@ -11,8 +11,14 @@ enum APIError: LocalizedError {
         switch self {
         case .unauthorized: return "Session expired. Sign in again."
         case .forbidden: return "You don’t have permission for that."
-        case .server(let msg): return msg
-        case .decoding: return "Could not read server response."
+        case .server(let msg):
+            // Opaque prod 500s used to say only "Request failed" (schema drift).
+            if msg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return "Server error. Try again."
+            }
+            return msg
+        case .decoding:
+            return "Could not read server response. Pull to refresh or reopen the job."
         case .network(let err): return err.localizedDescription
         }
     }
