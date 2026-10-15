@@ -43,7 +43,7 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let customerEmail: String
     let customerPhone: String
     let address: String
-    /// Legacy; server always sends false (full contact on assign).
+    /// True when phone/email/street were redacted (plumber, after completed 1h window).
     let piiMasked: Bool?
     /// Server: Message allowed (false after 1h on completed).
     let allowsCustomerMessaging: Bool?
@@ -74,6 +74,7 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         status == "confirmed" || status == "assigned" || status == "en_route"
     }
     var approachSMSSent: Bool { smsApproachAt != nil }
+    var isPiiMasked: Bool { piiMasked ?? false }
     var amountLabel: String {
         let dollars = Double(amountCents) / 100.0
         return dollars.formatted(.currency(code: "USD"))
@@ -109,12 +110,13 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     }
 
     var telURL: URL? {
-        guard canCallCustomer else { return nil }
+        guard canCallCustomer, !isPiiMasked else { return nil }
         // Prefer E.164-ish digits so Phone app opens reliably (keeps leading country code).
         let trimmed = customerPhone.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let digits = trimmed.filter(\.isNumber)
-        guard !digits.isEmpty else { return nil }
+        // Masked values like •••-•••-0199 only leave 4 digits — not dialable.
+        guard digits.count >= 7 else { return nil }
         if trimmed.hasPrefix("+") {
             return URL(string: "tel:+\(digits)")
         }
@@ -122,8 +124,9 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     }
 
     var mailtoURL: URL? {
+        guard !isPiiMasked else { return nil }
         let email = customerEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !email.isEmpty else { return nil }
+        guard !email.isEmpty, email.contains("@"), !email.contains("•••") else { return nil }
         let encoded = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? email
         return URL(string: "mailto:\(encoded)")
     }
@@ -222,6 +225,7 @@ struct BookingResponse: Codable {
 
 struct MessagesResponse: Codable {
     let messages: [ChatMessage]
+    let allowsCustomerMessaging: Bool?
 }
 
 struct MessageResponse: Codable {

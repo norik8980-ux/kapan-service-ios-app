@@ -167,7 +167,7 @@ struct BookingDetailView: View {
                     .foregroundStyle(KapanTheme.ink)
             }
 
-            if let tel = booking.telURL {
+            if booking.canCallCustomer, let tel = booking.telURL {
                 Button {
                     openURL(tel)
                 } label: {
@@ -188,7 +188,7 @@ struct BookingDetailView: View {
                 }
             }
 
-            if let mail = booking.mailtoURL {
+            if !booking.isPiiMasked, let mail = booking.mailtoURL {
                 Button {
                     openURL(mail)
                 } label: {
@@ -214,13 +214,14 @@ struct BookingDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if booking.status == "completed", !booking.canMessageCustomer || !booking.canCallCustomer {
-                Text("Call and Message close 1 hour after the job is finished.")
+            if booking.status == "completed", !booking.canMessageCustomer || !booking.canCallCustomer || booking.isPiiMasked {
+                Text("Call and Message close 1 hour after the job is finished. Street and phone are hidden after that.")
                     .font(.caption)
                     .foregroundStyle(KapanTheme.muted)
             }
 
-            if let maps = booking.mapsURL {
+            // Prefer lat/lng Maps after street is masked (address string may be •••).
+            if let maps = booking.mapsURL, booking.jobLat != nil || !booking.isPiiMasked {
                 Button {
                     openURL(maps)
                 } label: {

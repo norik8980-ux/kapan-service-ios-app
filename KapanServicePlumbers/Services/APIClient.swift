@@ -121,9 +121,9 @@ actor APIClient {
         )
     }
 
-    func messages(bookingId: String) async throws -> [ChatMessage] {
+    func messages(bookingId: String) async throws -> (messages: [ChatMessage], allowsCustomerMessaging: Bool) {
         let r: MessagesResponse = try await get("/api/mobile/bookings/\(bookingId)/messages")
-        return r.messages
+        return (r.messages, r.allowsCustomerMessaging ?? true)
     }
 
     func sendMessage(bookingId: String, body: String) async throws -> ChatMessage {

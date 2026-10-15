@@ -12,6 +12,7 @@ struct ChatView: View {
     @State private var sending = false
     @State private var loading = false
     @State private var hasLoadedOnce = false
+    @State private var allowsCustomerMessaging = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,9 +24,16 @@ struct ChatView: View {
                 }
             } else if messages.isEmpty && hasLoadedOnce {
                 ContentUnavailableView {
-                    Label("No messages yet", systemImage: "bubble.left")
+                    Label(
+                        allowsCustomerMessaging ? "No messages yet" : "Messaging closed",
+                        systemImage: "bubble.left"
+                    )
                 } description: {
-                    Text("Send a text to \(customerName).")
+                    Text(
+                        allowsCustomerMessaging
+                            ? "Send a text to \(customerName)."
+                            : "The 1-hour window after job completion has ended."
+                    )
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -56,37 +64,46 @@ struct ChatView: View {
                     .padding(.top, 4)
             }
 
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField("Message \(customerName)…", text: $draft, axis: .vertical)
-                    .lineLimit(1...5)
-                    .padding(10)
-                    .background(KapanTheme.canvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .disabled(sending)
-                Button {
-                    Task { await send() }
-                } label: {
-                    if sending {
-                        ProgressView()
-                            .tint(.white)
-                            .frame(width: 36, height: 36)
-                    } else {
-                        Image(systemName: "paperplane.fill")
-                            .font(.title3)
-                            .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
+            if allowsCustomerMessaging {
+                HStack(alignment: .bottom, spacing: 10) {
+                    TextField("Message \(customerName)…", text: $draft, axis: .vertical)
+                        .lineLimit(1...5)
+                        .padding(10)
+                        .background(KapanTheme.canvas)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .disabled(sending)
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        if sending {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(width: 36, height: 36)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                                .font(.title3)
+                                .foregroundStyle(.white)
+                                .frame(width: 36, height: 36)
+                        }
                     }
+                    .background(
+                        draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending
+                            ? KapanTheme.orange.opacity(0.45)
+                            : KapanTheme.orange
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .background(
-                    draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending
-                        ? KapanTheme.orange.opacity(0.45)
-                        : KapanTheme.orange
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .disabled(sending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding()
+                .background(.bar)
+            } else if hasLoadedOnce {
+                Text("Messaging is no longer available for this completed job.")
+                    .font(.footnote)
+                    .foregroundStyle(KapanTheme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(.bar)
             }
-            .padding()
-            .background(.bar)
         }
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
@@ -136,7 +153,9 @@ struct ChatView: View {
             hasLoadedOnce = true
         }
         do {
-            messages = try await APIClient.shared.messages(bookingId: bookingId)
+            let result = try await APIClient.shared.messages(bookingId: bookingId)
+            messages = result.messages
+            allowsCustomerMessaging = result.allowsCustomerMessaging
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -146,7 +165,7 @@ struct ChatView: View {
 
     private func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty, !sending else { return }
+        guard allowsCustomerMessaging, !body.isEmpty, !sending else { return }
         sending = true
         defer { sending = false }
         do {
@@ -156,6 +175,10 @@ struct ChatView: View {
             error = nil
         } catch {
             self.error = error.localizedDescription
+            // Server closes the window with 403 — hide composer.
+            if case APIError.forbidden = error {
+                allowsCustomerMessaging = false
+            }
             await session.handleUnauthorized(error)
         }
     }
