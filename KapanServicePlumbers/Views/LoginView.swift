@@ -62,7 +62,7 @@ struct LoginView: View {
                     Text("Admin sees all jobs and can assign plumbers. Plumbers see only their assigned jobs.")
                 }
 
-                Section("API server") {
+                Section {
                     LabeledContent("Host", value: AppConfig.displayHost)
                     if AppConfig.isUsingOverride {
                         Text("Using a custom base URL (not production).")
@@ -74,6 +74,8 @@ struct LoginView: View {
                         showAPISettings = true
                     }
                     .disabled(busy)
+                } header: {
+                    Text("API server")
                 } footer: {
                     Text("Default is \(AppConfig.productionBaseURL.absoluteString). Use local (e.g. \(AppConfig.localDefaultURLString)) only for development.")
                 }

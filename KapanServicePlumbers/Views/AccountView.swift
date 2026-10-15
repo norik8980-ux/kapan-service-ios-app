@@ -48,7 +48,7 @@ struct AccountView: View {
                     }
                 }
 
-                Section("API server") {
+                Section {
                     LabeledContent("Host", value: AppConfig.displayHost)
                     if AppConfig.isUsingOverride {
                         Text("Custom base URL — not production.")
@@ -72,6 +72,8 @@ struct AccountView: View {
                     if let apiError {
                         Text(apiError).font(.caption).foregroundStyle(.red)
                     }
+                } header: {
+                    Text("API server")
                 } footer: {
                     Text("Changing the API host signs you out. Default: \(AppConfig.productionBaseURL.absoluteString)")
                 }
