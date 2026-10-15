@@ -173,7 +173,15 @@ actor APIClient {
                 throw APIError.server("No response")
             }
             if http.statusCode == 401 {
-                throw APIError.unauthorized
+                // Authed calls: session really expired. Login (authed: false) is bad credentials.
+                if authed {
+                    throw APIError.unauthorized
+                }
+                if let err = try? decoder.decode(APIErrorBody.self, from: data),
+                   let message = err.error, !message.isEmpty {
+                    throw APIError.server(message)
+                }
+                throw APIError.server("Invalid email or password")
             }
             if http.statusCode == 403 {
                 throw APIError.forbidden
