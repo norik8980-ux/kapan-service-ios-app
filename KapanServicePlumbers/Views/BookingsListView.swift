@@ -73,26 +73,33 @@ struct BookingsListView: View {
             }
             .refreshable { await load() }
         } else {
-            List {
-                if let error {
-                    Section {
+            ScrollView {
+                LazyVStack(spacing: 14) {
+                    if let error {
                         InlineErrorRow(message: error) {
                             Task { await load() }
                         }
-                        .listRowBackground(Color.white)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(KapanTheme.border, lineWidth: 1)
+                        )
                     }
-                }
 
-                ForEach(bookings) { booking in
-                    NavigationLink(value: booking.id) {
-                        BookingRow(booking: booking, showAssignee: session.user?.isAdmin == true)
+                    ForEach(bookings) { booking in
+                        NavigationLink(value: booking.id) {
+                            BookingRow(booking: booking, showAssignee: session.user?.isAdmin == true)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .listRowBackground(Color.white)
-                    .listRowSeparatorTint(KapanTheme.border)
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
+                .padding(.top, 2)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
             .refreshable { await load() }
         }
     }
@@ -155,51 +162,89 @@ struct BookingRow: View {
     let booking: MobileBooking
     var showAssignee = false
 
+    private let cardRadius: CGFloat = 18
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(booking.customerName)
-                    .font(.headline)
-                    .foregroundStyle(KapanTheme.ink)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(booking.customerName)
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(KapanTheme.ink)
+                        .lineLimit(2)
+
+                    Text(booking.service.name)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink.opacity(0.72))
+                        .lineLimit(2)
+                }
+
                 Spacer(minLength: 8)
+
                 StatusChip(status: booking.status)
             }
-            Text(booking.service.name)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label {
+                    Text(booking.address)
+                        .lineLimit(2)
+                } icon: {
+                    Image(systemName: "mappin.and.ellipse")
+                        .foregroundStyle(KapanTheme.blue)
+                }
                 .font(.subheadline)
-                .foregroundStyle(KapanTheme.ink.opacity(0.85))
-            Text(booking.address)
-                .font(.caption)
-                .foregroundStyle(KapanTheme.muted)
-                .lineLimit(2)
-            HStack {
-                Label(booking.scheduledLabel, systemImage: "clock")
-                if showAssignee {
-                    Spacer(minLength: 8)
-                    if let p = booking.assignedPlumber {
-                        Label(p.displayName, systemImage: "person.fill")
-                    } else {
-                        Label("Unassigned", systemImage: "person.badge.plus")
-                            .foregroundStyle(KapanTheme.orange)
+                .foregroundStyle(KapanTheme.ink.opacity(0.82))
+
+                HStack(spacing: 14) {
+                    Label(booking.scheduledLabel, systemImage: "clock")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(KapanTheme.ink.opacity(0.78))
+
+                    if showAssignee {
+                        if let plumber = booking.assignedPlumber {
+                            Label(plumber.displayName, systemImage: "person.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(KapanTheme.ink.opacity(0.72))
+                                .lineLimit(1)
+                        } else {
+                            Label("Unassigned", systemImage: "person.badge.plus")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(KapanTheme.orange)
+                                .lineLimit(1)
+                        }
                     }
                 }
             }
-            .font(.caption2)
-            .foregroundStyle(KapanTheme.muted)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .stroke(KapanTheme.border, lineWidth: 1)
+        )
+        .shadow(color: KapanTheme.ink.opacity(0.07), radius: 14, y: 5)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens job details")
     }
 }
 
 struct StatusChip: View {
     let status: String
 
+    private var tint: Color { FieldStatus.color(for: status) }
+
     var body: some View {
         Text(FieldStatus.label(for: status))
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(FieldStatus.color(for: status).opacity(0.15))
-            .foregroundStyle(FieldStatus.color(for: status))
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .foregroundStyle(.white)
+            .background(tint)
             .clipShape(Capsule())
+            .shadow(color: tint.opacity(0.28), radius: 4, y: 2)
+            .accessibilityLabel("Status \(FieldStatus.label(for: status))")
     }
 }
