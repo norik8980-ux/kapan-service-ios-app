@@ -90,6 +90,8 @@ struct BookingDetailView: View {
                         if session.user?.isAdmin == true {
                             assignCard(booking)
                         }
+                        // Fail-closed: never show Message on completed/canceled
+                        // outside the 1h window (see MobileBooking.canMessageCustomer).
                         if booking.canMessageCustomer {
                             chatCard(booking)
                         }
@@ -480,8 +482,11 @@ struct BookingDetailView: View {
     private func reload() async {
         loadFailed = false
         do {
+            // Always replace from detail GET so list-row flags cannot leave
+            // Message visible after the 1h window.
             let loaded = try await APIClient.shared.booking(id: bookingId)
             booking = loaded
+            contactWindowTick &+= 1
             error = nil
             if session.user?.isAdmin == true {
                 do {

@@ -52,6 +52,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     /// ISO time when Message/tel close on completed jobs.
     let contactActionsUntil: String?
     let completedAt: String?
+    /// Stamped once when complete SMS runs — preferred over `updatedAt`.
+    let smsCompleteAt: String?
     let notes: String
     let locale: String
     let scheduledAt: String
@@ -97,13 +99,17 @@ struct MobileBooking: Codable, Identifiable, Equatable {
 
     /// Message / tel stay open for 1h after completed.
     ///
-    /// Defense in depth (owner may be on a stale API or leave Job open):
-    /// 1. Canceled → always closed
-    /// 2. `contactActionsUntil` past local now → closed
-    /// 3. Completed + local 1h from `completedAt`/`updatedAt` expired → closed
-    ///    (closes even if a stale payload still has `allowsCustomerMessaging: true`)
-    /// 4. Else prefer server `allowsCustomerMessaging` / `allowsCustomerCall`
-    /// 5. Else local window fallback
+    /// Fail-closed (tip after 540725d): never keep Message open from a bumped
+    /// `updatedAt` alone. Completed jobs require a real completion stamp
+    /// (`completedAt` or `smsCompleteAt`); otherwise hide.
+    ///
+    /// Order:
+    /// 1. Canceled → closed
+    /// 2. Server `allowsCustomerMessaging` / `allowsCustomerCall` == false → closed
+    /// 3. `piiMasked` == true → closed
+    /// 4. `contactActionsUntil` past → closed
+    /// 5. Completed: open only if within 1h of completion stamp (see anchors)
+    /// 6. Non-completed: prefer server true / default open
     var canMessageCustomer: Bool {
         contactActionAllowed(serverFlag: allowsCustomerMessaging)
     }
@@ -115,10 +121,16 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     private func contactActionAllowed(serverFlag: Bool?) -> Bool {
         let normalized = status.lowercased()
         if normalized == "canceled" || normalized == "cancelled" { return false }
+        // Explicit server close always wins (even if local clocks / stamps lag).
+        if serverFlag == false { return false }
+        if piiMasked == true { return false }
         if contactDeadlinePassed { return false }
-        if normalized == "completed", !contactWindowOpenFallback { return false }
-        if let flag = serverFlag { return flag }
-        return contactWindowOpenFallback
+
+        if normalized == "completed" {
+            return completedContactWindowOpen
+        }
+
+        return serverFlag ?? true
     }
 
     private var contactDeadlinePassed: Bool {
@@ -128,18 +140,22 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return Date() >= until
     }
 
-    /// Local 1h window from completedAt (preferred) or updatedAt.
-    /// For non-completed / non-canceled jobs this is `true` (Message available).
-    private var contactWindowOpenFallback: Bool {
-        let normalized = status.lowercased()
-        // Canceled jobs close Message/tel immediately (matches server policy).
-        if normalized == "canceled" || normalized == "cancelled" { return false }
-        guard normalized == "completed" else { return true }
-        let anchor =
-            ISO8601Helper.date(from: completedAt ?? "")
-            ?? ISO8601Helper.date(from: updatedAt)
-        guard let anchor else { return false }
-        return Date().timeIntervalSince(anchor) < 60 * 60
+    /// Completion anchors for the 1h Message/tel window.
+    /// Prefer `completedAt`, then `smsCompleteAt`. Never open from `updatedAt`
+    /// or a lone future `contactActionsUntil` (both reopen forever when the
+    /// row is touched after complete without a real completion stamp).
+    private var completedContactWindowOpen: Bool {
+        let now = Date()
+        let oneHour: TimeInterval = 60 * 60
+
+        if let completed = ISO8601Helper.date(from: completedAt ?? "") {
+            return now.timeIntervalSince(completed) < oneHour
+        }
+        if let sms = ISO8601Helper.date(from: smsCompleteAt ?? "") {
+            return now.timeIntervalSince(sms) < oneHour
+        }
+        // No reliable completion stamp → hide (fail closed).
+        return false
     }
 
     /// Seconds until Message/tel should close; nil if already closed or N/A.
@@ -154,7 +170,7 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         guard normalized == "completed" else { return nil }
         let anchor =
             ISO8601Helper.date(from: completedAt ?? "")
-            ?? ISO8601Helper.date(from: updatedAt)
+            ?? ISO8601Helper.date(from: smsCompleteAt ?? "")
         guard let anchor else { return nil }
         let left = 60 * 60 - Date().timeIntervalSince(anchor)
         return left > 0 ? left : nil

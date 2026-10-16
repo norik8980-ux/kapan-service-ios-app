@@ -123,7 +123,8 @@ actor APIClient {
 
     func messages(bookingId: String) async throws -> (messages: [ChatMessage], allowsCustomerMessaging: Bool) {
         let r: MessagesResponse = try await get("/api/mobile/bookings/\(bookingId)/messages")
-        return (r.messages, r.allowsCustomerMessaging ?? true)
+        // Fail closed when the flag is missing (completed+1h must not stay open).
+        return (r.messages, r.allowsCustomerMessaging ?? false)
     }
 
     func sendMessage(bookingId: String, body: String) async throws -> ChatMessage {
