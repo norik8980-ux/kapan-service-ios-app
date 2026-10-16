@@ -95,18 +95,29 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return date.formatted(date: .omitted, time: .shortened)
     }
 
-    /// Message / tel stay open for 1h after completed (server flags preferred).
-    /// Also honors `contactActionsUntil` so a stale open Job screen closes locally
-    /// after the deadline without waiting for a refresh.
+    /// Message / tel stay open for 1h after completed.
+    ///
+    /// Defense in depth (owner may be on a stale API or leave Job open):
+    /// 1. Canceled → always closed
+    /// 2. `contactActionsUntil` past local now → closed
+    /// 3. Completed + local 1h from `completedAt`/`updatedAt` expired → closed
+    ///    (closes even if a stale payload still has `allowsCustomerMessaging: true`)
+    /// 4. Else prefer server `allowsCustomerMessaging` / `allowsCustomerCall`
+    /// 5. Else local window fallback
     var canMessageCustomer: Bool {
-        if contactDeadlinePassed { return false }
-        if let flag = allowsCustomerMessaging { return flag }
-        return contactWindowOpenFallback
+        contactActionAllowed(serverFlag: allowsCustomerMessaging)
     }
 
     var canCallCustomer: Bool {
+        contactActionAllowed(serverFlag: allowsCustomerCall)
+    }
+
+    private func contactActionAllowed(serverFlag: Bool?) -> Bool {
+        let normalized = status.lowercased()
+        if normalized == "canceled" || normalized == "cancelled" { return false }
         if contactDeadlinePassed { return false }
-        if let flag = allowsCustomerCall { return flag }
+        if normalized == "completed", !contactWindowOpenFallback { return false }
+        if let flag = serverFlag { return flag }
         return contactWindowOpenFallback
     }
 
@@ -117,6 +128,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return Date() >= until
     }
 
+    /// Local 1h window from completedAt (preferred) or updatedAt.
+    /// For non-completed / non-canceled jobs this is `true` (Message available).
     private var contactWindowOpenFallback: Bool {
         let normalized = status.lowercased()
         // Canceled jobs close Message/tel immediately (matches server policy).
@@ -127,6 +140,24 @@ struct MobileBooking: Codable, Identifiable, Equatable {
             ?? ISO8601Helper.date(from: updatedAt)
         guard let anchor else { return false }
         return Date().timeIntervalSince(anchor) < 60 * 60
+    }
+
+    /// Seconds until Message/tel should close; nil if already closed or N/A.
+    var contactActionsRemaining: TimeInterval? {
+        let normalized = status.lowercased()
+        if normalized == "canceled" || normalized == "cancelled" { return nil }
+        if !canMessageCustomer && !canCallCustomer { return nil }
+        if let until = ISO8601Helper.date(from: contactActionsUntil ?? "") {
+            let left = until.timeIntervalSinceNow
+            return left > 0 ? left : nil
+        }
+        guard normalized == "completed" else { return nil }
+        let anchor =
+            ISO8601Helper.date(from: completedAt ?? "")
+            ?? ISO8601Helper.date(from: updatedAt)
+        guard let anchor else { return nil }
+        let left = 60 * 60 - Date().timeIntervalSince(anchor)
+        return left > 0 ? left : nil
     }
 
     var telURL: URL? {

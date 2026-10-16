@@ -12,11 +12,15 @@ struct BookingDetailView: View {
     @State private var busy = false
     @State private var showAssignSheet = false
     @State private var loadFailed = false
+    /// Bumps so Message/tel re-evaluate when the 1h deadline elapses while Job is open.
+    @State private var contactWindowTick = 0
 
     var body: some View {
         Group {
             if let booking {
                 content(booking)
+                    // Read tick so SwiftUI re-renders when the local deadline fires.
+                    .id("contact-\(contactWindowTick)-\(booking.canMessageCustomer)")
             } else if loadFailed, let error {
                 ErrorStateView(message: error) {
                     Task { await reload() }
@@ -29,6 +33,9 @@ struct BookingDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .tint(KapanTheme.orange)
         .task { await reload() }
+        .task(id: booking?.id) {
+            await watchContactDeadline()
+        }
         .onChange(of: location.sessionExpired) { _, expired in
             if expired {
                 Task { await session.signOut() }
@@ -42,6 +49,25 @@ struct BookingDetailView: View {
                 ) { plumberId in
                     await assign(plumberId)
                 }
+            }
+        }
+    }
+
+    /// Sleep until `contactActionsUntil` (or local 1h) then force a UI refresh.
+    private func watchContactDeadline() async {
+        while !Task.isCancelled {
+            guard let booking, let remaining = booking.contactActionsRemaining else {
+                return
+            }
+            // Cap sleep so a long remaining window still re-checks after status changes.
+            let sleepFor = min(max(remaining, 0.5), 60)
+            try? await Task.sleep(nanoseconds: UInt64(sleepFor * 1_000_000_000))
+            if Task.isCancelled { return }
+            contactWindowTick &+= 1
+            // Soft refresh once past the deadline so flags/PII match server.
+            if booking.contactActionsRemaining == nil {
+                await reload()
+                return
             }
         }
     }
