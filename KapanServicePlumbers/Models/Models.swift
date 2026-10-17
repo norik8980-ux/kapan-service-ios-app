@@ -69,6 +69,10 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let smsApproachAt: String?
     let createdAt: String
     let updatedAt: String
+    /// Open jobs board: coords are fuzzed (~3 mi); Maps is approximate.
+    let approximateLocation: Bool?
+
+    var isApproximateLocation: Bool { approximateLocation == true }
 
     var statusLabel: String { FieldStatus.label(for: status) }
     var isActiveFieldJob: Bool {
@@ -284,7 +288,25 @@ struct LoginResponse: Codable {
     let user: MobileUser
 }
 
+struct MobileFeatures: Codable, Equatable {
+    let openJobsClaim: Bool?
+
+    var isOpenJobsClaimEnabled: Bool { openJobsClaim == true }
+
+    static let disabled = MobileFeatures(openJobsClaim: false)
+}
+
+struct MeResponse: Codable {
+    let user: MobileUser
+    let features: MobileFeatures?
+}
+
 struct BookingsResponse: Codable {
+    let bookings: [MobileBooking]
+}
+
+struct OpenBookingsResponse: Codable {
+    let enabled: Bool?
     let bookings: [MobileBooking]
 }
 

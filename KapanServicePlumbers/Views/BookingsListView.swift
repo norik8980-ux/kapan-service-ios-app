@@ -16,6 +16,11 @@ struct BookingsListView: View {
         ("completed", "Done"),
     ]
 
+    private var sections: [BookingDaySection] {
+        // Done is history — newest calendar day first; open tabs chronological.
+        BookingDateSections.group(bookings, reverseDays: tab == "completed")
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
@@ -64,7 +69,6 @@ struct BookingsListView: View {
     @ViewBuilder
     private var content: some View {
         if loading && bookings.isEmpty && !hasLoadedOnce {
-            // ScrollView so pull-to-refresh works even on first load.
             ScrollView {
                 LoadingStateView(message: "Loading jobs…")
                     .frame(maxWidth: .infinity, minHeight: 360)
@@ -79,7 +83,6 @@ struct BookingsListView: View {
             }
             .refreshable { await load() }
         } else if !loading && bookings.isEmpty && error == nil && hasLoadedOnce {
-            // Empty state must be scrollable — .refreshable only works on scroll views.
             ScrollView {
                 emptyState
                     .frame(maxWidth: .infinity, minHeight: 420)
@@ -87,7 +90,7 @@ struct BookingsListView: View {
             .refreshable { await load() }
         } else {
             ScrollView {
-                LazyVStack(spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 18) {
                     if let error {
                         InlineErrorRow(message: error) {
                             Task { await load() }
@@ -100,16 +103,31 @@ struct BookingsListView: View {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(KapanTheme.border, lineWidth: 1)
                         )
+                        .padding(.horizontal, 16)
                     }
 
-                    ForEach(bookings) { booking in
-                        NavigationLink(value: booking.id) {
-                            BookingRow(booking: booking, showAssignee: session.user?.isAdmin == true)
+                    ForEach(sections) { section in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(section.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(KapanTheme.muted)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 4)
+                                .accessibilityAddTraits(.isHeader)
+
+                            ForEach(section.bookings) { booking in
+                                NavigationLink(value: booking.id) {
+                                    BookingRow(
+                                        booking: booking,
+                                        showAssignee: session.user?.isAdmin == true
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 16)
                 .padding(.bottom, 28)
                 .padding(.top, 2)
             }
@@ -164,9 +182,7 @@ struct BookingsListView: View {
             error = nil
             hasLoadedOnce = true
         } catch {
-            // Aborted refresh (URLError.cancelled) must not surface as a red error card.
             if APIError.isCancellation(error) || Task.isCancelled { return }
-            // Keep any previously loaded rows; only empty first-loads go full-screen error.
             self.error = error.localizedDescription
             hasLoadedOnce = true
             await session.handleUnauthorized(error)
@@ -212,7 +228,7 @@ struct BookingRow: View {
                 .foregroundStyle(KapanTheme.ink.opacity(0.82))
 
                 HStack(spacing: 14) {
-                    Label(booking.scheduledLabel, systemImage: "clock")
+                    Label(booking.scheduledTimeLabel, systemImage: "clock")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(KapanTheme.ink.opacity(0.78))
 

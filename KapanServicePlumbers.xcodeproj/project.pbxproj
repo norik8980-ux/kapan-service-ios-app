@@ -15,10 +15,11 @@
 		B2C3D4E5F60718293A4B5C6D /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* KeychainStore.swift */; };
 		E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F794E0211C47C7960EA72B /* AccountView.swift */; };
 		D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB362E5D130746F9995D00CE /* BookingDetailView.swift */; };
-		88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */; };
 		ED4B955B34EB4233B8836C2A /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */; };
 		0752F67AA6BB4AEF845512B1 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F866DEE350426AA01501E6 /* LoginView.swift */; };
 		A55B2893EFBD428CB2A1DF04 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE0EB547438248C79C98CF77 /* MainTabView.swift */; };
+		F0A1B2C3D4E5F60718293A01 /* OpenJobsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A02 /* OpenJobsListView.swift */; };
+		F0A1B2C3D4E5F60718293A03 /* BookingDateSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A04 /* BookingDateSections.swift */; };
 		A2866269FD984E8783AD66AA /* PlumbersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF3E283B864B608D3553EB /* PlumbersListView.swift */; };
 		675573AD485A433CBE70EAD0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483503BE37D54A059F8A16A2 /* RootView.swift */; };
 		F1A2B3C4D5E647890ABCDE04 /* SupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E647890ABCDE03 /* SupportViews.swift */; };
@@ -41,6 +42,8 @@
 		80F794E0211C47C7960EA72B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		DB362E5D130746F9995D00CE /* BookingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingDetailView.swift; sourceTree = "<group>"; };
 		02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingsListView.swift; sourceTree = "<group>"; };
+		F0A1B2C3D4E5F60718293A02 /* OpenJobsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenJobsListView.swift; sourceTree = "<group>"; };
+		F0A1B2C3D4E5F60718293A04 /* BookingDateSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingDateSections.swift; sourceTree = "<group>"; };
 		5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		C0F866DEE350426AA01501E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		CE0EB547438248C79C98CF77 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -108,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				19569B51C47749518B9239DF /* Models.swift */,
+				F0A1B2C3D4E5F60718293A04 /* BookingDateSections.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -131,6 +135,7 @@
 				80F794E0211C47C7960EA72B /* AccountView.swift */,
 				DB362E5D130746F9995D00CE /* BookingDetailView.swift */,
 				02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */,
+				F0A1B2C3D4E5F60718293A02 /* OpenJobsListView.swift */,
 				5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */,
 				C0F866DEE350426AA01501E6 /* LoginView.swift */,
 				CE0EB547438248C79C98CF77 /* MainTabView.swift */,
@@ -216,6 +221,8 @@
 				E5BE3A6DAC81421292303787 /* AccountView.swift in Sources */,
 				D4FFD03DC04B4B3794CF3952 /* BookingDetailView.swift in Sources */,
 				88E386DEED8442AFA4E410F2 /* BookingsListView.swift in Sources */,
+				F0A1B2C3D4E5F60718293A01 /* OpenJobsListView.swift in Sources */,
+				F0A1B2C3D4E5F60718293A03 /* BookingDateSections.swift in Sources */,
 				ED4B955B34EB4233B8836C2A /* ChatView.swift in Sources */,
 				0752F67AA6BB4AEF845512B1 /* LoginView.swift in Sources */,
 				A55B2893EFBD428CB2A1DF04 /* MainTabView.swift in Sources */,

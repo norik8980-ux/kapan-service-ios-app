@@ -13,6 +13,11 @@ struct MainTabView: View {
                     )
                 }
 
+            if session.features.isOpenJobsClaimEnabled, session.user?.isPlumber == true {
+                OpenJobsListView()
+                    .tabItem { Label("Open jobs", systemImage: "tray") }
+            }
+
             if session.user?.isAdmin == true {
                 PlumbersListView()
                     .tabItem { Label("Plumbers", systemImage: "person.2") }
@@ -22,5 +27,8 @@ struct MainTabView: View {
                 .tabItem { Label("Account", systemImage: "person.circle") }
         }
         .tint(KapanTheme.orange)
+        .task {
+            await session.refreshFeatures()
+        }
     }
 }

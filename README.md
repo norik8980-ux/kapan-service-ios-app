@@ -23,8 +23,10 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 | Method | Path | Role |
 | --- | --- | --- |
 | POST | `/api/mobile/auth/login` | admin, plumber |
-| GET | `/api/mobile/auth/me` | session |
+| GET | `/api/mobile/auth/me` | session + `features.openJobsClaim` |
 | GET | `/api/mobile/bookings?tab=today\|upcoming\|completed` | admin: all; plumber: assigned |
+| GET | `/api/mobile/bookings/open` | plumber Open jobs board (privacy shape; flag gated) |
+| POST | `/api/mobile/bookings/:id/claim` | plumber accept open job (atomic; 409 race) |
 | GET/PATCH | `/api/mobile/bookings/:id` | status: `en_route` / `arrived` / `completed` |
 | PATCH | `/api/mobile/bookings/:id/assign` | admin — `{ "plumberId": "…" \| null }` |
 | POST | `/api/mobile/bookings/:id/location` | GPS while en_route → approach SMS @ 3 mi |
@@ -37,7 +39,8 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 - Login (Bearer token, restore session) + confirm sign-out
 - Brand UI tokens (`KapanTheme`) matching kapanservice.com (orange / blue / light canvas)
 - Configurable API base URL (prod default; hidden long-press controls; changing host clears session)
-- Jobs list: Today / Upcoming / Done; pull-to-refresh; loading / empty / retry
+- Jobs list: Today / Upcoming / Done; **date section headers** (Today / Tomorrow / “September 15”); pull-to-refresh; loading / empty / retry
+- **Open jobs** tab (flag-gated): privacy list + Accept job confirm; date sections; 409 already-claimed handling
 - Job detail: notes, call, Apple Maps, payment, assign, field status
 - Admin: assign / transfer / unassign plumber sheet (Plumbers tab)
 - Plumber + admin: Slide to start → Arrived → Complete (GPS only on plumber after successful status)

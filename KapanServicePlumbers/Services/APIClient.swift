@@ -3,6 +3,7 @@ import Foundation
 enum APIError: LocalizedError {
     case unauthorized
     case forbidden
+    case alreadyClaimed
     case server(String)
     case decoding
     case network(Error)
@@ -11,6 +12,7 @@ enum APIError: LocalizedError {
         switch self {
         case .unauthorized: return "Session expired. Sign in again."
         case .forbidden: return "You don’t have permission for that."
+        case .alreadyClaimed: return "Already claimed by another plumber."
         case .server(let msg):
             // Opaque prod 500s used to say only "Request failed" (schema drift).
             if msg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -74,16 +76,27 @@ actor APIClient {
         )
     }
 
-    func me() async throws -> MobileUser {
-        struct R: Codable { let user: MobileUser }
-        let r: R = try await get("/api/mobile/auth/me")
-        return r.user
+    func me() async throws -> MeResponse {
+        try await get("/api/mobile/auth/me")
     }
 
     func bookings(tab: String) async throws -> [MobileBooking] {
         let encoded = tab.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tab
         let r: BookingsResponse = try await get("/api/mobile/bookings?tab=\(encoded)")
         return r.bookings
+    }
+
+    func openBookings() async throws -> [MobileBooking] {
+        let r: OpenBookingsResponse = try await get("/api/mobile/bookings/open")
+        return r.bookings
+    }
+
+    func claimBooking(id: String) async throws -> MobileBooking {
+        let r: BookingResponse = try await post(
+            "/api/mobile/bookings/\(id)/claim",
+            body: [:]
+        )
+        return r.booking
     }
 
     func booking(id: String) async throws -> MobileBooking {
@@ -237,6 +250,9 @@ actor APIClient {
             }
             if http.statusCode == 403 {
                 throw APIError.forbidden
+            }
+            if http.statusCode == 409 {
+                throw APIError.alreadyClaimed
             }
             let ok: Bool
             if let acceptStatuses {

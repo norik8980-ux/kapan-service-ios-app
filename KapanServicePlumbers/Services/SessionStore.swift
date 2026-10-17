@@ -5,6 +5,7 @@ import SwiftUI
 final class SessionStore: ObservableObject {
     @Published var user: MobileUser?
     @Published var token: String?
+    @Published var features: MobileFeatures = .disabled
     @Published var bootstrapped = false
     @Published var restoring = false
 
@@ -29,7 +30,9 @@ final class SessionStore: ObservableObject {
         token = saved
         await APIClient.shared.setToken(saved)
         do {
-            user = try await APIClient.shared.me()
+            let me = try await APIClient.shared.me()
+            user = me.user
+            features = me.features ?? .disabled
             PushRegistration.shared.setSignedIn(true)
         } catch {
             // Invalid / expired token — clear local session quietly.
@@ -45,6 +48,25 @@ final class SessionStore: ObservableObject {
         persistToken(response.token)
         await APIClient.shared.setToken(response.token)
         PushRegistration.shared.setSignedIn(true)
+        await refreshFeatures()
+    }
+
+    /// Refresh feature flags from `/me` (Open jobs toggle, etc.).
+    func refreshFeatures() async {
+        guard token != nil else {
+            features = .disabled
+            return
+        }
+        do {
+            let me = try await APIClient.shared.me()
+            user = me.user
+            features = me.features ?? .disabled
+        } catch {
+            // Keep last known features on transient errors.
+            if let api = error as? APIError, case .unauthorized = api {
+                features = .disabled
+            }
+        }
     }
 
     /// Clears credentials and API token. Callers should stop location sharing first.
@@ -64,6 +86,7 @@ final class SessionStore: ObservableObject {
     private func clearSessionLocally() async {
         token = nil
         user = nil
+        features = .disabled
         clearPersistedToken()
         await APIClient.shared.setToken(nil)
     }
