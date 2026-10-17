@@ -277,7 +277,9 @@ struct PlumberAccount: Codable, Identifiable, Equatable {
 }
 
 struct LoginResponse: Codable {
-    let ok: Bool
+    /// Present on healthy API responses (`ok: true`). Optional so a missing
+    /// field does not block sign-in if `token` + `user` are present.
+    let ok: Bool?
     let token: String
     let user: MobileUser
 }

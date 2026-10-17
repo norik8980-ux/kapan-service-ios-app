@@ -18,7 +18,7 @@ enum APIError: LocalizedError {
             }
             return msg
         case .decoding:
-            return "Could not read server response. Pull to refresh or reopen the job."
+            return "Could not read server response. Check the API URL or try again."
         case .network(let err): return err.localizedDescription
         }
     }
@@ -249,11 +249,15 @@ actor APIClient {
                    let message = err.error, !message.isEmpty {
                     throw APIError.server(message)
                 }
-                throw APIError.server("HTTP \(http.statusCode)")
+                throw APIError.server(Self.nonJSONOrStatusMessage(status: http.statusCode, data: data, response: http))
             }
             do {
                 return try decoder.decode(T.self, from: data)
             } catch {
+                // HTML / empty / shape drift → clearer than a bare decode failure.
+                if Self.looksLikeHTML(data) || !Self.looksLikeJSON(data) {
+                    throw APIError.server(Self.nonJSONOrStatusMessage(status: http.statusCode, data: data, response: http))
+                }
                 throw APIError.decoding
             }
         } catch let error as APIError {
@@ -261,5 +265,33 @@ actor APIClient {
         } catch {
             throw APIError.network(error)
         }
+    }
+
+    private static func looksLikeHTML(_ data: Data) -> Bool {
+        guard let s = String(data: data.prefix(200), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+            return false
+        }
+        return s.hasPrefix("<!doctype") || s.hasPrefix("<html")
+    }
+
+    private static func looksLikeJSON(_ data: Data) -> Bool {
+        guard let s = String(data: data.prefix(64), encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return false
+        }
+        return s.hasPrefix("{") || s.hasPrefix("[")
+    }
+
+    private static func nonJSONOrStatusMessage(status: Int, data: Data, response: HTTPURLResponse) -> String {
+        let contentType = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+        if looksLikeHTML(data) || contentType.contains("text/html") {
+            return "Server returned a web page (HTTP \(status)). Check the API URL."
+        }
+        if data.isEmpty {
+            return "Empty server response (HTTP \(status))."
+        }
+        if !looksLikeJSON(data) {
+            return "Unexpected server response (HTTP \(status))."
+        }
+        return "HTTP \(status)"
     }
 }
