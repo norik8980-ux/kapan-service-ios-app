@@ -21,23 +21,34 @@ struct BookingsListView: View {
         BookingDateSections.group(bookings, reverseDays: tab == "completed")
     }
 
+    private var jobsTitle: String {
+        session.user?.isAdmin == true ? "All jobs" : "My jobs"
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
                 KapanTheme.canvasGradient
 
+                // Large title + tabs sit outside refreshable content so pull-to-refresh
+                // only rubber-bands the list (nav large-title mode moves with ScrollView).
                 VStack(spacing: 0) {
+                    screenTitle
+
                     tabPicker
                         .padding(.horizontal, 20)
-                        .padding(.top, 8)
+                        .padding(.top, 4)
                         .padding(.bottom, 12)
 
                     content
                 }
             }
-            // Inline title stays fixed while the refreshable list rubber-bands underneath.
-            .navigationTitle(session.user?.isAdmin == true ? "All jobs" : "My jobs")
+            .navigationTitle(jobsTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Hide the small inline nav title; the static screenTitle is the display title.
+                ToolbarItem(placement: .principal) { EmptyView() }
+            }
             .tint(KapanTheme.orange)
             .navigationDestination(for: String.self) { id in
                 BookingDetailView(bookingId: id)
@@ -55,6 +66,17 @@ struct BookingsListView: View {
                 }
             }
         }
+    }
+
+    private var screenTitle: some View {
+        Text(jobsTitle)
+            .font(.largeTitle.bold())
+            .foregroundStyle(KapanTheme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var tabPicker: some View {

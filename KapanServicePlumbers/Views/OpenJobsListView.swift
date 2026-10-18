@@ -17,12 +17,19 @@ struct OpenJobsListView: View {
         NavigationStack(path: $path) {
             ZStack {
                 KapanTheme.canvasGradient
-                content
+                // Large title sits outside refreshable content so pull-to-refresh
+                // only rubber-bands the list (nav large-title mode moves with ScrollView).
+                VStack(alignment: .leading, spacing: 0) {
+                    screenTitle
+                    content
+                }
             }
-            // Inline keeps the title pinned in the nav bar so pull-to-refresh
-            // only moves the list underneath (large titles rubber-band with ScrollView).
             .navigationTitle("Open jobs")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Hide the small inline nav title; the static screenTitle is the display title.
+                ToolbarItem(placement: .principal) { EmptyView() }
+            }
             .tint(KapanTheme.orange)
             .navigationDestination(for: OpenJobsRoute.self) { route in
                 switch route {
@@ -39,6 +46,17 @@ struct OpenJobsListView: View {
             }
             .task { await load() }
         }
+    }
+
+    private var screenTitle: some View {
+        Text("Open jobs")
+            .font(.largeTitle.bold())
+            .foregroundStyle(KapanTheme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+            .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder
