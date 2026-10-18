@@ -163,7 +163,7 @@ struct AccountView: View {
                 .font(.caption)
                 .foregroundStyle(KapanTheme.muted)
 
-            if notificationAuth == .denied || notificationAuth == .restricted {
+            if notificationAuth == .denied {
                 Button("Open Settings") { openSettings() }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(KapanTheme.orange)
