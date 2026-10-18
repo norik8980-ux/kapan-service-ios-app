@@ -152,10 +152,18 @@ actor APIClient {
         )
     }
 
-    func messages(bookingId: String) async throws -> (messages: [ChatMessage], allowsCustomerMessaging: Bool) {
+    func messages(bookingId: String) async throws -> (
+        messages: [ChatMessage],
+        allowsCustomerMessaging: Bool,
+        contactActionsClosedReason: String?
+    ) {
         let r: MessagesResponse = try await get("/api/mobile/bookings/\(bookingId)/messages")
-        // Fail closed when the flag is missing (completed+1h must not stay open).
-        return (r.messages, r.allowsCustomerMessaging ?? false)
+        // Fail closed when the flag is missing (before job day / completed+1h).
+        return (
+            r.messages,
+            r.allowsCustomerMessaging ?? false,
+            r.contactActionsClosedReason
+        )
     }
 
     func sendMessage(bookingId: String, body: String) async throws -> ChatMessage {

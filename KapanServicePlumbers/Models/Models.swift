@@ -50,12 +50,14 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let address: String
     /// True when phone/email/street were redacted (plumber, after completed 1h window).
     let piiMasked: Bool?
-    /// Server: Message allowed (false after 1h on completed).
+    /// Server: Message allowed (false before job day / after 1h on completed).
     let allowsCustomerMessaging: Bool?
-    /// Server: tel: call allowed (false after 1h on completed).
+    /// Server: tel: call allowed (false before job day / after 1h on completed).
     let allowsCustomerCall: Bool?
     /// ISO time when Message/tel close on completed jobs.
     let contactActionsUntil: String?
+    /// Server closed reason: before_job_day | post_complete_window | canceled | …
+    let contactActionsClosedReason: String?
     let completedAt: String?
     /// Stamped once when complete SMS runs — preferred over `updatedAt`.
     let smsCompleteAt: String?
@@ -118,11 +120,25 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return Calendar.current.isDate(date, inSameDayAs: Date())
     }
 
-    /// Message / tel stay open for 1h after completed.
+    /// Message/tel: open on/after the job’s scheduled calendar day (LA business TZ,
+    /// matching server). Missing schedule → closed.
+    var isOnOrAfterScheduledJobDay: Bool {
+        guard let date = scheduledDate else { return false }
+        var cal = Calendar(identifier: .gregorian)
+        if let tz = TimeZone(identifier: "America/Los_Angeles") {
+            cal.timeZone = tz
+        }
+        let today = cal.startOfDay(for: Date())
+        let jobDay = cal.startOfDay(for: date)
+        return today >= jobDay
+    }
+
+    /// Message / tel: open on job day; stay open 1h after completed.
     ///
-    /// Fail-closed (tip after 540725d): never keep Message open from a bumped
-    /// `updatedAt` alone. Completed jobs require a real completion stamp
-    /// (`completedAt` or `smsCompleteAt`); otherwise hide.
+    /// Fail-closed (tip after 540725d + job-day): never keep Message open from a
+    /// bumped `updatedAt` alone. Completed jobs require a real completion stamp
+    /// (`completedAt` or `smsCompleteAt`); otherwise hide. Before job day: closed
+    /// even if assigned.
     ///
     /// Order:
     /// 1. Canceled → closed
@@ -130,13 +146,46 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     /// 3. `piiMasked` == true → closed
     /// 4. `contactActionsUntil` past → closed
     /// 5. Completed: open only if within 1h of completion stamp (see anchors)
-    /// 6. Non-completed: prefer server true / default open
+    /// 6. Non-completed: require on/after job day; prefer server true / default open
     var canMessageCustomer: Bool {
         contactActionAllowed(serverFlag: allowsCustomerMessaging)
     }
 
     var canCallCustomer: Bool {
         contactActionAllowed(serverFlag: allowsCustomerCall)
+    }
+
+    /// Resolved closed reason for Chat / detail copy (server first, then local).
+    var resolvedContactClosedReason: String? {
+        if canMessageCustomer { return nil }
+        if let server = contactActionsClosedReason, !server.isEmpty {
+            return server
+        }
+        let normalized = status.lowercased()
+        if normalized == "canceled" || normalized == "cancelled" {
+            return "canceled"
+        }
+        if normalized == "completed" {
+            return completedContactWindowOpen ? nil : "post_complete_window"
+        }
+        if !isOnOrAfterScheduledJobDay {
+            return "before_job_day"
+        }
+        return nil
+    }
+
+    /// User-facing Chat empty-state / footer when messaging is closed.
+    var messagingClosedDescription: String {
+        switch resolvedContactClosedReason {
+        case "before_job_day":
+            return "Messaging opens on the day of the job."
+        case "canceled":
+            return "This job was canceled. Messaging is closed."
+        case "post_complete_window", "missing_complete_anchor":
+            return "The 1-hour window after job completion has ended."
+        default:
+            return "Messaging is not available for this job."
+        }
     }
 
     private func contactActionAllowed(serverFlag: Bool?) -> Bool {
@@ -150,6 +199,9 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         if normalized == "completed" {
             return completedContactWindowOpen
         }
+
+        // Before scheduled local day: closed even if assigned (local fail-closed).
+        if !isOnOrAfterScheduledJobDay { return false }
 
         return serverFlag ?? true
     }
@@ -396,6 +448,8 @@ struct BookingResponse: Codable {
 struct MessagesResponse: Codable {
     let messages: [ChatMessage]
     let allowsCustomerMessaging: Bool?
+    let contactActionsClosedReason: String?
+    let contactActionsUntil: String?
 }
 
 struct MessageResponse: Codable {

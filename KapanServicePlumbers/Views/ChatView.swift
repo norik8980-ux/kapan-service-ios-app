@@ -4,6 +4,8 @@ import UIKit
 struct ChatView: View {
     let bookingId: String
     var customerName: String = "Customer"
+    /// Optional hint from job detail (used when GET omits reason).
+    var initialClosedReason: String? = nil
 
     @EnvironmentObject private var session: SessionStore
     @State private var messages: [ChatMessage] = []
@@ -14,6 +16,33 @@ struct ChatView: View {
     @State private var hasLoadedOnce = false
     /// Closed until GET /messages returns flags (avoids composer flash + POST racing 403).
     @State private var allowsCustomerMessaging = false
+    @State private var closedReason: String? = nil
+
+    private var closedDescription: String {
+        switch closedReason ?? initialClosedReason {
+        case "before_job_day":
+            return "Messaging opens on the day of the job."
+        case "canceled":
+            return "This job was canceled. Messaging is closed."
+        case "post_complete_window", "missing_complete_anchor":
+            return "The 1-hour window after job completion has ended."
+        default:
+            return "Messaging is not available for this job."
+        }
+    }
+
+    private var closedFooter: String {
+        switch closedReason ?? initialClosedReason {
+        case "before_job_day":
+            return "Messaging opens on the day of the job."
+        case "canceled":
+            return "Messaging is closed for this canceled job."
+        case "post_complete_window", "missing_complete_anchor":
+            return "Messaging is no longer available for this completed job."
+        default:
+            return "Messaging is not available for this job."
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,7 +62,7 @@ struct ChatView: View {
                     Text(
                         allowsCustomerMessaging
                             ? "Send a text to \(customerName)."
-                            : "The 1-hour window after job completion has ended."
+                            : closedDescription
                     )
                 }
                 .frame(maxHeight: .infinity)
@@ -98,7 +127,7 @@ struct ChatView: View {
                 .padding()
                 .background(.bar)
             } else if hasLoadedOnce {
-                Text("Messaging is no longer available for this completed job.")
+                Text(closedFooter)
                     .font(.footnote)
                     .foregroundStyle(KapanTheme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -157,6 +186,7 @@ struct ChatView: View {
             let result = try await APIClient.shared.messages(bookingId: bookingId)
             messages = result.messages
             allowsCustomerMessaging = result.allowsCustomerMessaging
+            closedReason = result.contactActionsClosedReason ?? initialClosedReason
             error = nil
         } catch {
             if APIError.isCancellation(error) || Task.isCancelled { return }
@@ -187,6 +217,9 @@ struct ChatView: View {
             // Server closes the window with 403 — hide composer.
             if case APIError.forbidden = error {
                 allowsCustomerMessaging = false
+                if closedReason == nil {
+                    closedReason = initialClosedReason ?? "post_complete_window"
+                }
             }
             await session.handleUnauthorized(error)
         }
