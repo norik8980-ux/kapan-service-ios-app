@@ -28,6 +28,9 @@
 		A1B2C3D4E5F6471890ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6471890ABCDEF01 /* Assets.xcassets */; };
 		C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */; };
 		E7F8A9B0C1D2435465768798 /* PushRegistration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F8A9B0C1D2435465768797 /* PushRegistration.swift */; };
+		A9B0C1D2E3F4455667788899 /* LocationConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B0C1D2E3F4455667788898 /* LocationConsentView.swift */; };
+		B0C1D2E3F40556677889900A /* ChangePasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C1D2E3F40556677889900B /* ChangePasswordView.swift */; };
+		C1D2E3F40516677889900ABC /* AppLockStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F40516677889900ABD /* AppLockStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +59,9 @@
 		C3D4E5F6471890ABCDEF0101 /* KapanTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KapanTheme.swift; sourceTree = "<group>"; };
 		E7F8A9B0C1D2435465768797 /* PushRegistration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushRegistration.swift; sourceTree = "<group>"; };
 		E7F8A9B0C1D2435465768799 /* KapanServicePlumbers.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KapanServicePlumbers.entitlements; sourceTree = "<group>"; };
+		A9B0C1D2E3F4455667788898 /* LocationConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationConsentView.swift; sourceTree = "<group>"; };
+		B0C1D2E3F40556677889900B /* ChangePasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordView.swift; sourceTree = "<group>"; };
+		C1D2E3F40516677889900ABD /* AppLockStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,6 +128,7 @@
 			children = (
 				F455C9B19DE34A83A37982F2 /* APIClient.swift */,
 				F1A2B3C4D5E647890ABCDE01 /* AppConfig.swift */,
+				C1D2E3F40516677889900ABD /* AppLockStore.swift */,
 				4C220D95343F462D998C89F0 /* LocationPublisher.swift */,
 				E7F8A9B0C1D2435465768797 /* PushRegistration.swift */,
 				5879AC56A81946EF9155C774 /* SessionStore.swift */,
@@ -134,10 +141,12 @@
 			isa = PBXGroup;
 			children = (
 				80F794E0211C47C7960EA72B /* AccountView.swift */,
+				B0C1D2E3F40556677889900B /* ChangePasswordView.swift */,
 				DB362E5D130746F9995D00CE /* BookingDetailView.swift */,
 				02AD948ECDDF4B9F828F4B87 /* BookingsListView.swift */,
 				F0A1B2C3D4E5F60718293A02 /* OpenJobsListView.swift */,
 				5DD2660C4D1F47BBBCBAAF29 /* ChatView.swift */,
+				A9B0C1D2E3F4455667788898 /* LocationConsentView.swift */,
 				C0F866DEE350426AA01501E6 /* LoginView.swift */,
 				CE0EB547438248C79C98CF77 /* MainTabView.swift */,
 				B3EF3E283B864B608D3553EB /* PlumbersListView.swift */,
@@ -233,6 +242,9 @@
 				F1A2B3C4D5E647890ABCDE04 /* SupportViews.swift in Sources */,
 				C3D4E5F6471890ABCDEF0102 /* KapanTheme.swift in Sources */,
 				E7F8A9B0C1D2435465768798 /* PushRegistration.swift in Sources */,
+				A9B0C1D2E3F4455667788899 /* LocationConsentView.swift in Sources */,
+				B0C1D2E3F40556677889900A /* ChangePasswordView.swift in Sources */,
+				C1D2E3F40516677889900ABC /* AppLockStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

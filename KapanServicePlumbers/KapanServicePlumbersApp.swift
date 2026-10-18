@@ -6,6 +6,7 @@ struct KapanServicePlumbersApp: App {
     @StateObject private var session = SessionStore()
     @StateObject private var location = LocationPublisher()
     @StateObject private var pushRouter = PushRouter.shared
+    @StateObject private var appLock = AppLockStore.shared
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,7 @@ struct KapanServicePlumbersApp: App {
                 .environmentObject(session)
                 .environmentObject(location)
                 .environmentObject(pushRouter)
+                .environmentObject(appLock)
         }
     }
 }

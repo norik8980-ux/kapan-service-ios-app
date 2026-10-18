@@ -34,6 +34,7 @@ final class SessionStore: ObservableObject {
             user = me.user
             features = me.features ?? .disabled
             PushRegistration.shared.setSignedIn(true)
+            AppLockStore.shared.setSignedIn(true)
         } catch {
             // Invalid / expired token — clear local session quietly.
             await clearSessionLocally()
@@ -48,6 +49,7 @@ final class SessionStore: ObservableObject {
         persistToken(response.token)
         await APIClient.shared.setToken(response.token)
         PushRegistration.shared.setSignedIn(true)
+        AppLockStore.shared.setSignedIn(true)
         await refreshFeatures()
     }
 
@@ -89,6 +91,7 @@ final class SessionStore: ObservableObject {
         features = .disabled
         clearPersistedToken()
         await APIClient.shared.setToken(nil)
+        AppLockStore.shared.setSignedIn(false)
     }
 
     /// Apply a new API base URL override and drop the session (token is host-scoped).

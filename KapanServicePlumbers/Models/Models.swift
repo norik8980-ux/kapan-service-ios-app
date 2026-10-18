@@ -305,6 +305,21 @@ struct LoginResponse: Codable {
     let user: MobileUser
 }
 
+struct MobileConfigResponse: Codable {
+    let supportPhone: String
+}
+
+enum MobileConfig {
+    /// Site NAP fallback when config API is unreachable.
+    static let fallbackSupportPhone = "(858) 744-6630"
+
+    static func telURL(for displayPhone: String) -> URL? {
+        let digits = displayPhone.filter(\.isNumber)
+        guard !digits.isEmpty else { return nil }
+        return URL(string: "tel:\(digits)")
+    }
+}
+
 struct MobileFeatures: Codable, Equatable {
     let openJobsClaim: Bool?
 

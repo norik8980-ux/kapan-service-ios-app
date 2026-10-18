@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock Kapan Service Plumbers when you open the app on this iPhone.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Location is used so we can notify customers when your plumber is approaching (within about 3 miles) during an active job.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

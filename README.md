@@ -24,6 +24,8 @@ Requires an **Apple Developer** account for device / TestFlight builds.
 | --- | --- | --- |
 | POST | `/api/mobile/auth/login` | admin, plumber |
 | GET | `/api/mobile/auth/me` | session + `features.openJobsClaim` |
+| GET | `/api/mobile/config` | `supportPhone` from admin Settings |
+| POST | `/api/mobile/auth/change-password` | `{ currentPassword, newPassword }` |
 | GET | `/api/mobile/bookings?tab=today\|upcoming\|completed` | admin: all; plumber: assigned |
 | GET | `/api/mobile/bookings/open` | plumber Open jobs board (privacy shape; flag gated) |
 | POST | `/api/mobile/bookings/:id/claim` | plumber accept open job (atomic; 409 race) |

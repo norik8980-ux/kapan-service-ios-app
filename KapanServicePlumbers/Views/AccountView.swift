@@ -1,8 +1,12 @@
 import SwiftUI
+import UIKit
+import UserNotifications
 
 struct AccountView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var location: LocationPublisher
+    @EnvironmentObject private var appLock: AppLockStore
+    @ObservedObject private var push = PushRegistration.shared
 
     @State private var confirmSignOut = false
     @State private var showAPISettings = false
@@ -10,23 +14,29 @@ struct AccountView: View {
     @State private var apiOverrideDraft = ""
     @State private var apiError: String?
 
+    @State private var supportPhone = MobileConfig.fallbackSupportPhone
+    @State private var notificationAuth: UNAuthorizationStatus = .notDetermined
+    @State private var pushBusy = false
+
+    private var appVersionLabel: String {
+        let marketing = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(marketing) (\(build))"
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 KapanTheme.canvasGradient
 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        identityCard
-                            .padding(.top, 8)
-
-                        if let locationNote {
-                            Text(locationNote)
-                                .font(.caption)
-                                .foregroundStyle(KapanTheme.muted)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 4)
-                        }
+                    VStack(spacing: 20) {
+                        profileSection
+                        supportSection
+                        notificationsSection
+                        permissionsSection
+                        securitySection
+                        aboutSection
 
                         if showDeveloper || AppConfig.isUsingOverride {
                             developerCard
@@ -35,6 +45,7 @@ struct AccountView: View {
                         signOutButton
                     }
                     .padding(.horizontal, 24)
+                    .padding(.top, 8)
                     .padding(.bottom, 40)
                 }
             }
@@ -61,6 +72,13 @@ struct AccountView: View {
                     onSave: { await saveAPIOverride() }
                 )
             }
+            .task {
+                await refreshSupportPhone()
+                await refreshNotificationStatus()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                Task { await refreshNotificationStatus() }
+            }
             .onChange(of: location.sessionExpired) { _, expired in
                 if expired {
                     Task { await session.signOut() }
@@ -69,8 +87,10 @@ struct AccountView: View {
         }
     }
 
-    private var identityCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    // MARK: - Sections
+
+    private var profileSection: some View {
+        accountPanel {
             Text(session.user?.displayName ?? "Account")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(KapanTheme.ink)
@@ -93,6 +113,165 @@ struct AccountView: View {
                     .foregroundStyle(KapanTheme.blue)
             }
         }
+    }
+
+    private var supportSection: some View {
+        accountPanel {
+            sectionHeader("Support", support: "Call the office if you need dispatch.")
+
+            if let telURL = MobileConfig.telURL(for: supportPhone) {
+                Link(destination: telURL) {
+                    HStack {
+                        Text("Call dispatcher")
+                            .foregroundStyle(KapanTheme.ink)
+                        Spacer()
+                        Text(supportPhone)
+                            .foregroundStyle(KapanTheme.muted)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(KapanTheme.muted)
+                    }
+                }
+                .accessibilityLabel("Call dispatcher, \(supportPhone)")
+            } else {
+                HStack {
+                    Text("Call dispatcher")
+                    Spacer()
+                    Text(supportPhone)
+                        .foregroundStyle(KapanTheme.muted)
+                }
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        accountPanel {
+            sectionHeader("Notifications", support: "Get alerts when a job is assigned to you.")
+
+            Toggle(isOn: Binding(
+                get: { push.userWantsPush },
+                set: { newValue in
+                    Task { await setPushEnabled(newValue) }
+                }
+            )) {
+                Text("Push notifications")
+            }
+            .tint(KapanTheme.orange)
+            .disabled(pushBusy)
+
+            Text(notificationStatusCopy)
+                .font(.caption)
+                .foregroundStyle(KapanTheme.muted)
+
+            if notificationAuth == .denied || notificationAuth == .restricted {
+                Button("Open Settings") { openSettings() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KapanTheme.orange)
+            }
+        }
+    }
+
+    private var permissionsSection: some View {
+        accountPanel {
+            sectionHeader("Permissions", support: "Required for field jobs and alerts.")
+
+            Button { openSettings() } label: {
+                permissionRow(
+                    title: "Location",
+                    value: locationOn ? "On" : "Off",
+                    subtitle: locationSubtitle
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider().overlay(KapanTheme.border)
+
+            Button { openSettings() } label: {
+                permissionRow(
+                    title: "Notifications",
+                    value: notificationsOn ? "On" : "Off",
+                    subtitle: nil
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var securitySection: some View {
+        accountPanel {
+            sectionHeader("Security", support: "Protect this device.")
+
+            NavigationLink {
+                ChangePasswordView()
+            } label: {
+                HStack {
+                    Text("Change password")
+                        .foregroundStyle(KapanTheme.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(KapanTheme.muted)
+                }
+            }
+
+            Divider().overlay(KapanTheme.border)
+
+            Toggle(isOn: Binding(
+                get: { appLock.isEnabled },
+                set: { appLock.setEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unlock with Face ID")
+                    Text("Require Face ID when opening the app on this iPhone.")
+                        .font(.caption)
+                        .foregroundStyle(KapanTheme.muted)
+                }
+            }
+            .tint(KapanTheme.orange)
+
+            if let msg = appLock.unavailableMessage, !appLock.biometryAvailable {
+                Text(msg)
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.muted)
+            }
+        }
+    }
+
+    private var aboutSection: some View {
+        accountPanel {
+            sectionHeader("About", support: nil)
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(appVersionLabel)
+                    .foregroundStyle(KapanTheme.muted)
+            }
+            .font(.subheadline)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func sectionHeader(_ title: String, support: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+            if let support {
+                Text(support)
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.muted)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 4)
+    }
+
+    private func accountPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content()
+        }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.white)
@@ -104,15 +283,97 @@ struct AccountView: View {
         .shadow(color: KapanTheme.ink.opacity(0.06), radius: 12, y: 4)
     }
 
-    /// Quiet status only when location is actively relevant (sharing or blocked).
-    private var locationNote: String? {
-        if location.isSharing {
-            return "Sharing location for the active job."
+    private func permissionRow(title: String, value: String, subtitle: String?) -> some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(KapanTheme.ink)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(KapanTheme.muted)
+                }
+            }
+            Spacer()
+            Text(value)
+                .foregroundStyle(KapanTheme.muted)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
         }
-        if session.user?.isPlumber == true, location.permissionDenied {
-            return "Location is off — enable it in Settings for En route jobs."
+        .font(.subheadline)
+    }
+
+    private var locationOn: Bool {
+        location.authorization == .authorizedWhenInUse
+            || location.authorization == .authorizedAlways
+    }
+
+    private var notificationsOn: Bool {
+        switch notificationAuth {
+        case .authorized, .provisional, .ephemeral:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var locationSubtitle: String? {
+        if location.isSharing {
+            return "Sharing for the active job."
+        }
+        if !locationOn {
+            return "Enable in Settings for En route jobs."
         }
         return nil
+    }
+
+    private var notificationStatusCopy: String {
+        switch notificationAuth {
+        case .authorized:
+            return "Status: Allowed"
+        case .denied:
+            return "Status: Off in iPhone Settings"
+        case .notDetermined:
+            return "Status: Not set yet"
+        case .provisional, .ephemeral:
+            return "Status: Limited"
+        @unknown default:
+            return "Status: Limited"
+        }
+    }
+
+    private func setPushEnabled(_ on: Bool) async {
+        pushBusy = true
+        defer { pushBusy = false }
+        if on {
+            await push.enablePushFromAccount()
+        } else {
+            await push.disablePushFromAccount()
+        }
+        await refreshNotificationStatus()
+    }
+
+    private func refreshNotificationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        notificationAuth = settings.authorizationStatus
+    }
+
+    private func refreshSupportPhone() async {
+        do {
+            let config = try await APIClient.shared.mobileConfig()
+            let phone = config.supportPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !phone.isEmpty {
+                supportPhone = phone
+            }
+        } catch {
+            // Keep NAP fallback.
+        }
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private var developerCard: some View {

@@ -80,6 +80,24 @@ actor APIClient {
         try await get("/api/mobile/auth/me")
     }
 
+    func mobileConfig() async throws -> MobileConfigResponse {
+        try await get("/api/mobile/config")
+    }
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        struct Ok: Codable {
+            let ok: Bool?
+            let message: String?
+        }
+        let _: Ok = try await post(
+            "/api/mobile/auth/change-password",
+            body: [
+                "currentPassword": currentPassword,
+                "newPassword": newPassword,
+            ]
+        )
+    }
+
     func bookings(tab: String) async throws -> [MobileBooking] {
         let encoded = tab.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tab
         let r: BookingsResponse = try await get("/api/mobile/bookings?tab=\(encoded)")
