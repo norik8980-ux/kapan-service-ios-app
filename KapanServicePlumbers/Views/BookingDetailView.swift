@@ -100,12 +100,6 @@ struct BookingDetailView: View {
                         if booking.canMessageCustomer {
                             chatCard(booking)
                         }
-                        if let err = location.lastError, location.activeBookingId == booking.id {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundStyle(KapanTheme.destructive)
-                                .padding(.horizontal, 4)
-                        }
                         if let error {
                             InlineErrorRow(message: error) {
                                 Task { await reload() }
@@ -177,9 +171,14 @@ struct BookingDetailView: View {
                     .foregroundStyle(Color(red: 0.18, green: 0.64, blue: 0.36))
             }
             if location.permissionDenied {
-                Text("Location permission denied — enable it in Settings.")
+                Text("Location is off — turn it on in Settings so we can notify the customer when you’re close.")
                     .font(.caption)
-                    .foregroundStyle(KapanTheme.destructive)
+                    .foregroundStyle(KapanTheme.muted)
+            } else if let hint = location.lastError {
+                // Friendly copy only (publisher never sets raw kCLErrorDomain text).
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(KapanTheme.muted)
             }
         }
         .padding(16)

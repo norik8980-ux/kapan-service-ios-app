@@ -8,6 +8,7 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
     @Published var authorization: CLAuthorizationStatus = .notDetermined
     @Published var isSharing = false
     @Published var activeBookingId: String?
+    /// Friendly, plumber-facing copy only — never raw `kCLErrorDomain` / NSError text.
     @Published var lastError: String?
     @Published var lastDistanceMiles: Double?
     @Published var lastApproachSent = false
@@ -19,6 +20,9 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
     private let manager = CLLocationManager()
     private var lastPostAt: Date?
     private let minPostInterval: TimeInterval = 8
+    /// Soft hint after repeated location-unknown while sharing (not a red banner).
+    private var consecutiveUnknownFailures = 0
+    private let unknownFailuresBeforeHint = 4
 
     override init() {
         super.init()
@@ -50,6 +54,7 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         lastApproachSent = false
         sessionExpired = false
         lastPostAt = nil
+        consecutiveUnknownFailures = 0
         requestPermissionIfNeeded()
         manager.startUpdatingLocation()
     }
@@ -59,6 +64,8 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         isSharing = false
         lastDistanceMiles = nil
         lastPostAt = nil
+        consecutiveUnknownFailures = 0
+        lastError = nil
         manager.stopUpdatingLocation()
     }
 
@@ -78,9 +85,18 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorization = manager.authorizationStatus
+            if self.permissionDenied {
+                // Only actionable failure while sharing for approach SMS / auto-arrival.
+                if self.isSharing {
+                    self.lastError = "Location is off — turn it on in Settings so we can notify the customer when you’re close."
+                }
+                return
+            }
             if self.isSharing, self.activeBookingId != nil,
                manager.authorizationStatus == .authorizedWhenInUse
                 || manager.authorizationStatus == .authorizedAlways {
+                self.lastError = nil
+                self.consecutiveUnknownFailures = 0
                 manager.startUpdatingLocation()
             }
         }
@@ -90,6 +106,7 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
         guard let loc = locations.last else { return }
         Task { @MainActor in
             guard let bookingId = activeBookingId, isSharing else { return }
+            consecutiveUnknownFailures = 0
             if let last = lastPostAt, Date().timeIntervalSince(last) < minPostInterval {
                 return
             }
@@ -114,18 +131,51 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
                 }
                 lastError = nil
             } catch {
-                lastError = error.localizedDescription
                 if let api = error as? APIError, case .unauthorized = api {
                     sessionExpired = true
                     stop()
+                    return
                 }
+                // Keep sharing; don’t dump raw URL/API strings that look like system failures.
+                lastError = "Couldn’t update location — will try again."
             }
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
-            lastError = error.localizedDescription
+            guard isSharing else { return }
+
+            if permissionDenied {
+                lastError = "Location is off — turn it on in Settings so we can notify the customer when you’re close."
+                return
+            }
+
+            if Self.isTransientLocationUnknown(error) {
+                // kCLErrorLocationUnknown (0): common on simulator / cold GPS — retry quietly.
+                consecutiveUnknownFailures += 1
+                manager.requestLocation()
+                if consecutiveUnknownFailures >= unknownFailuresBeforeHint {
+                    lastError = "Waiting for GPS… approach alert will send when we get a fix."
+                }
+                return
+            }
+
+            // Never surface raw kCLErrorDomain / localizedDescription.
+            lastError = "Location unavailable — check that Location is allowed for Kapan."
+        }
+    }
+
+    /// `kCLErrorLocationUnknown` and similar transient Core Location failures.
+    private static func isTransientLocationUnknown(_ error: Error) -> Bool {
+        let ns = error as NSError
+        guard ns.domain == kCLErrorDomain else { return false }
+        guard let code = CLError.Code(rawValue: ns.code) else { return false }
+        switch code {
+        case .locationUnknown, .network, .headingFailure:
+            return true
+        default:
+            return false
         }
     }
 }
