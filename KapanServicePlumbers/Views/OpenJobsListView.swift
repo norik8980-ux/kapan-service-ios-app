@@ -19,8 +19,10 @@ struct OpenJobsListView: View {
                 KapanTheme.canvasGradient
                 content
             }
+            // Inline keeps the title pinned in the nav bar so pull-to-refresh
+            // only moves the list underneath (large titles rubber-band with ScrollView).
             .navigationTitle("Open jobs")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .tint(KapanTheme.orange)
             .navigationDestination(for: OpenJobsRoute.self) { route in
                 switch route {

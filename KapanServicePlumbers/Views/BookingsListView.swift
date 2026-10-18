@@ -35,8 +35,9 @@ struct BookingsListView: View {
                     content
                 }
             }
+            // Inline title stays fixed while the refreshable list rubber-bands underneath.
             .navigationTitle(session.user?.isAdmin == true ? "All jobs" : "My jobs")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .tint(KapanTheme.orange)
             .navigationDestination(for: String.self) { id in
                 BookingDetailView(bookingId: id)
