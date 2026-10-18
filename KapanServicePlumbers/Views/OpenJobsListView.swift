@@ -280,63 +280,74 @@ struct OpenJobDetailView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 14) {
                             Text(booking.service.name)
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(KapanTheme.ink)
-                            Text(booking.scheduledLabel)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(KapanTheme.muted)
-                            Text(booking.amountLabel)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(KapanTheme.ink)
+
+                            // Match list-card SF Symbols: grey clock, muted card, person.
+                            detailIconRow(systemImage: "clock", tint: KapanTheme.muted) {
+                                Text(booking.scheduledLabel)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(KapanTheme.ink.opacity(0.78))
+                            }
+                            detailIconRow(systemImage: "creditcard.fill", tint: KapanTheme.muted) {
+                                Text(booking.amountLabel)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(KapanTheme.ink.opacity(0.82))
+                            }
                             if !booking.customerName.isEmpty {
-                                Text(booking.customerName)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(KapanTheme.ink)
+                                detailIconRow(systemImage: "person.fill", tint: KapanTheme.blue) {
+                                    Text(booking.customerName)
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(KapanTheme.ink)
+                                }
                             }
                         }
                         .padding(18)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(detailCardBackground)
 
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 12) {
                             Text("Approximate area")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(KapanTheme.muted)
-                            Text(booking.address)
-                                .font(.body)
-                                .foregroundStyle(KapanTheme.ink)
+                                .textCase(.uppercase)
+
+                            detailIconRow(systemImage: "mappin.and.ellipse", tint: KapanTheme.blue) {
+                                Text(booking.address)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(KapanTheme.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             if booking.jobLat != nil, booking.jobLng != nil {
                                 Button {
                                     openApproxMaps(booking)
                                 } label: {
                                     Label("View approximate area", systemImage: "map")
                                         .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(KapanTheme.blue)
                                 }
-                                .buttonStyle(.bordered)
-                                .tint(KapanTheme.blue)
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(18)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(detailCardBackground)
 
                         if !booking.notes.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Notes")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(KapanTheme.muted)
+                                    .textCase(.uppercase)
                                 Text(booking.notes)
                                     .font(.body)
                                     .foregroundStyle(KapanTheme.ink)
                             }
                             .padding(18)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .background(detailCardBackground)
                         }
 
                         if session.user?.isAdmin == true, !canAccept {
@@ -360,6 +371,32 @@ struct OpenJobDetailView: View {
                 }
             }
         }
+    }
+
+    private func detailIconRow<Content: View>(
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 22, alignment: .center)
+                .padding(.top, 2)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var detailCardBackground: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(KapanTheme.border, lineWidth: 1)
+            )
+            .shadow(color: KapanTheme.ink.opacity(0.06), radius: 12, y: 4)
     }
 
     private var acceptSlideBar: some View {

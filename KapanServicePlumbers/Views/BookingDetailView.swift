@@ -146,9 +146,12 @@ struct BookingDetailView: View {
                 Spacer(minLength: 8)
                 StatusChip(status: booking.status)
             }
-            Label(booking.scheduledLabel, systemImage: "clock")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(KapanTheme.ink.opacity(0.78))
+            // Same SF Symbol styling as My jobs list cards (grey clock).
+            detailIconRow(systemImage: "clock", tint: KapanTheme.muted) {
+                Text(booking.scheduledLabel)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(KapanTheme.ink.opacity(0.78))
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -300,7 +303,7 @@ struct BookingDetailView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(KapanTheme.ink)
             }
-            detailIconRow(systemImage: "clock", tint: KapanTheme.blue) {
+            detailIconRow(systemImage: "clock", tint: KapanTheme.muted) {
                 Text(booking.scheduledLabel)
                     .font(.body.weight(.medium))
                     .foregroundStyle(KapanTheme.ink)
