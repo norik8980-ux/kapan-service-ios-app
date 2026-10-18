@@ -11,6 +11,8 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
     @Published var lastError: String?
     @Published var lastDistanceMiles: Double?
     @Published var lastApproachSent = false
+    /// Latest booking payload from a location POST (auto-arrived status, etc.).
+    @Published var lastBookingSnapshot: MobileBooking?
     /// Set when a location POST returns 401 so the UI can sign out.
     @Published var sessionExpired = false
 
@@ -99,8 +101,16 @@ final class LocationPublisher: NSObject, ObservableObject, CLLocationManagerDele
                     lng: loc.coordinate.longitude
                 )
                 lastDistanceMiles = result.distanceMiles
+                lastBookingSnapshot = result.booking
                 if result.approach?.sent == true {
                     lastApproachSent = true
+                }
+                // Arrival is automatic at ~3 mi — stop sharing once server marks arrived.
+                if result.approach?.autoArrived == true
+                    || result.booking.status == "arrived"
+                    || result.booking.status == "completed"
+                    || result.booking.status == "canceled" {
+                    stop()
                 }
                 lastError = nil
             } catch {

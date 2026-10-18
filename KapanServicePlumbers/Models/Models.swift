@@ -106,6 +106,18 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         return date.formatted(date: .omitted, time: .shortened)
     }
 
+    /// Date + time for list cards (section headers alone are not enough).
+    var scheduledCardDateTimeLabel: String {
+        guard let date = scheduledDate else { return scheduledAt }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    /// Start slider: only on the job’s local calendar day (plumber device).
+    var isScheduledOnLocalCalendarDay: Bool {
+        guard let date = scheduledDate else { return false }
+        return Calendar.current.isDate(date, inSameDayAs: Date())
+    }
+
     /// Message / tel stay open for 1h after completed.
     ///
     /// Fail-closed (tip after 540725d): never keep Message open from a bumped
@@ -396,9 +408,11 @@ struct DeviceRegisterResponse: Codable {
 }
 
 struct ApproachPing: Codable, Equatable {
-    let skipped: Bool
+    let skipped: Bool?
     let reason: String?
     let sent: Bool?
+    /// Server auto-set status to arrived after approach SMS (no Arrived slider).
+    let autoArrived: Bool?
 }
 
 struct LocationPostResponse: Codable {

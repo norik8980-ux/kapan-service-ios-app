@@ -26,10 +26,8 @@ struct OpenJobsListView: View {
             }
             .navigationTitle("Open jobs")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Hide the small inline nav title; the static screenTitle is the display title.
-                ToolbarItem(placement: .principal) { EmptyView() }
-            }
+            // Root: hide chrome so the in-content hero title matches Account large-title weight.
+            .toolbar(path.isEmpty ? .hidden : .automatic, for: .navigationBar)
             .tint(KapanTheme.orange)
             .navigationDestination(for: OpenJobsRoute.self) { route in
                 switch route {
@@ -50,12 +48,13 @@ struct OpenJobsListView: View {
 
     private var screenTitle: some View {
         Text("Open jobs")
-            .font(.largeTitle.bold())
+            // Match pre-inline nav large title (~34pt bold); same size as My jobs.
+            .font(.system(size: 34, weight: .bold))
             .foregroundStyle(KapanTheme.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -201,9 +200,13 @@ struct OpenJobRow: View {
                 .font(.subheadline)
                 .foregroundStyle(KapanTheme.ink.opacity(0.82))
 
-                Label(booking.scheduledTimeLabel, systemImage: "clock")
+                Label(booking.scheduledCardDateTimeLabel, systemImage: "clock")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(KapanTheme.ink.opacity(0.78))
+
+                Label(booking.amountLabel, systemImage: "creditcard.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KapanTheme.ink.opacity(0.82))
 
                 if !booking.notes.isEmpty {
                     Text(booking.notes)
@@ -284,6 +287,9 @@ struct OpenJobDetailView: View {
                             Text(booking.scheduledLabel)
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(KapanTheme.muted)
+                            Text(booking.amountLabel)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(KapanTheme.ink)
                             if !booking.customerName.isEmpty {
                                 Text(booking.customerName)
                                     .font(.body.weight(.semibold))

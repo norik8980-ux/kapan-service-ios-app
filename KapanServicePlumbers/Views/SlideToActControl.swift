@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Bottom-bar slide control for field status actions (start / arrived / finished).
+/// Bottom-bar slide control for field status actions (start / finished; arrival is automatic).
 struct SlideToActControl: View {
     let title: String
     var tint: Color = KapanTheme.orange

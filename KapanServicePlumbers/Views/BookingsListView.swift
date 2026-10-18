@@ -37,7 +37,7 @@ struct BookingsListView: View {
 
                     tabPicker
                         .padding(.horizontal, 20)
-                        .padding(.top, 4)
+                        .padding(.top, 6)
                         .padding(.bottom, 12)
 
                     content
@@ -45,10 +45,9 @@ struct BookingsListView: View {
             }
             .navigationTitle(jobsTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Hide the small inline nav title; the static screenTitle is the display title.
-                ToolbarItem(placement: .principal) { EmptyView() }
-            }
+            // Root: hide chrome so the in-content hero title matches Account large-title weight.
+            // Detail pushes keep the bar for Back.
+            .toolbar(path.isEmpty ? .hidden : .automatic, for: .navigationBar)
             .tint(KapanTheme.orange)
             .navigationDestination(for: String.self) { id in
                 BookingDetailView(bookingId: id)
@@ -70,12 +69,13 @@ struct BookingsListView: View {
 
     private var screenTitle: some View {
         Text(jobsTitle)
-            .font(.largeTitle.bold())
+            // Match pre-inline nav large title (~34pt bold), not a smaller Dynamic Type largeTitle.
+            .font(.system(size: 34, weight: .bold))
             .foregroundStyle(KapanTheme.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 4)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -250,23 +250,25 @@ struct BookingRow: View {
                 .font(.subheadline)
                 .foregroundStyle(KapanTheme.ink.opacity(0.82))
 
-                HStack(spacing: 14) {
-                    Label(booking.scheduledTimeLabel, systemImage: "clock")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(KapanTheme.ink.opacity(0.78))
+                Label(booking.scheduledCardDateTimeLabel, systemImage: "clock")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(KapanTheme.ink.opacity(0.78))
 
-                    if showAssignee {
-                        if let plumber = booking.assignedPlumber {
-                            Label(plumber.displayName, systemImage: "person.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(KapanTheme.ink.opacity(0.72))
-                                .lineLimit(1)
-                        } else {
-                            Label("Unassigned", systemImage: "person.badge.plus")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(KapanTheme.orange)
-                                .lineLimit(1)
-                        }
+                Label(booking.amountLabel, systemImage: "creditcard.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KapanTheme.ink.opacity(0.82))
+
+                if showAssignee {
+                    if let plumber = booking.assignedPlumber {
+                        Label(plumber.displayName, systemImage: "person.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(KapanTheme.ink.opacity(0.72))
+                            .lineLimit(1)
+                    } else {
+                        Label("Unassigned", systemImage: "person.badge.plus")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(KapanTheme.orange)
+                            .lineLimit(1)
                     }
                 }
             }

@@ -41,6 +41,11 @@ struct BookingDetailView: View {
                 Task { await session.signOut() }
             }
         }
+        .onChange(of: location.lastBookingSnapshot) { _, snap in
+            // Reflect auto-arrived (geo / approach SMS) without a manual Arrived slider.
+            guard let snap, snap.id == bookingId else { return }
+            booking = snap
+        }
         .sheet(isPresented: $showAssignSheet) {
             if let booking {
                 AssignPlumberSheet(
@@ -370,6 +375,8 @@ struct BookingDetailView: View {
 
     @ViewBuilder
     private func fieldActionsBar(_ booking: MobileBooking) -> some View {
+        // Manual slides: Start (job’s local calendar day only) + Finished.
+        // Arrival is automatic via geo / approach SMS — no “Slide to arrived”.
         VStack(spacing: 10) {
             if showsStartSlide(booking) {
                 SlideToActControl(
@@ -379,17 +386,6 @@ struct BookingDetailView: View {
                     disabled: busy
                 ) {
                     await setStatus("en_route")
-                }
-            }
-
-            if showsArrivedSlide(booking) {
-                SlideToActControl(
-                    title: "Slide to arrived",
-                    tint: KapanTheme.blue,
-                    systemImage: "mappin.and.ellipse",
-                    disabled: busy
-                ) {
-                    await setStatus("arrived")
                 }
             }
 
@@ -446,13 +442,19 @@ struct BookingDetailView: View {
         guard let booking else { return false }
         // Completed / canceled: no field slides (matches server plumber graph).
         if booking.status == "completed" || booking.status == "canceled" {
-            return user.isAdmin
+            return false
         }
-        if user.isAdmin { return true }
-        if user.isPlumber {
-            return booking.assignedPlumberId == user.id
+        let allowed: Bool
+        if user.isAdmin {
+            allowed = true
+        } else if user.isPlumber {
+            allowed = booking.assignedPlumberId == user.id
+        } else {
+            allowed = false
         }
-        return false
+        guard allowed else { return false }
+        // Hide the action bar when neither Start nor Finished applies (e.g. days before job).
+        return showsStartSlide(booking) || showsFinishSlide(booking)
     }
 
     private var statusLockedMessage: String {
@@ -467,12 +469,9 @@ struct BookingDetailView: View {
         case "en_route", "arrived", "completed", "canceled":
             return false
         default:
-            return true
+            // Do not allow starting a few days before — only on the job’s local day.
+            return booking.isScheduledOnLocalCalendarDay
         }
-    }
-
-    private func showsArrivedSlide(_ booking: MobileBooking) -> Bool {
-        booking.status == "en_route"
     }
 
     private func showsFinishSlide(_ booking: MobileBooking) -> Bool {
@@ -533,13 +532,14 @@ struct BookingDetailView: View {
             } else if location.activeBookingId == updated.id {
                 location.stop()
             }
+            // Soft refresh so auto-arrived from geo shows after Start while detail stays open.
+            location.sync(with: updated, isPlumber: session.user?.isPlumber == true)
         } catch {
             if APIError.isCancellation(error) || Task.isCancelled { return }
             // Keep existing `booking` so detail stays usable after a failed finish.
             let action: String = {
                 switch status {
                 case "en_route": return "start"
-                case "arrived": return "arrived"
                 case "completed": return "finished"
                 default: return "update"
                 }
