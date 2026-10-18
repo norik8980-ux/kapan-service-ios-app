@@ -7,11 +7,16 @@ struct MobileUser: Codable, Identifiable, Equatable {
     let name: String
     let role: String
 
-    var isAdmin: Bool { role == "admin" }
-    var isPlumber: Bool { role == "plumber" }
+    /// Normalized role for comparisons (API may vary casing).
+    private var normalizedRole: String { role.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+
+    var isAdmin: Bool { normalizedRole == "admin" }
+    var isPlumber: Bool { normalizedRole == "plumber" }
+    /// Open jobs board: plumbers claim; admins may browse when the flag is on.
+    var canBrowseOpenJobs: Bool { isPlumber || isAdmin }
     var displayName: String { name.isEmpty ? email : name }
     var roleLabel: String {
-        switch role {
+        switch normalizedRole {
         case "admin": return "Admin"
         case "plumber": return "Plumber"
         default: return role.capitalized
@@ -291,14 +296,61 @@ struct LoginResponse: Codable {
 struct MobileFeatures: Codable, Equatable {
     let openJobsClaim: Bool?
 
+    /// Fail-open only when the server explicitly sends `true`.
     var isOpenJobsClaimEnabled: Bool { openJobsClaim == true }
 
     static let disabled = MobileFeatures(openJobsClaim: false)
+
+    enum CodingKeys: String, CodingKey {
+        case openJobsClaim
+    }
+
+    init(openJobsClaim: Bool?) {
+        self.openJobsClaim = openJobsClaim
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Accept bool or common string/number truthy shapes so a settings
+        // serialization quirk does not drop the whole `/me` payload.
+        if let bool = try? container.decodeIfPresent(Bool.self, forKey: .openJobsClaim) {
+            openJobsClaim = bool
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .openJobsClaim) {
+            let v = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            openJobsClaim = (v == "1" || v == "true" || v == "yes" || v == "on")
+        } else if let num = try? container.decodeIfPresent(Int.self, forKey: .openJobsClaim) {
+            openJobsClaim = num != 0
+        } else {
+            openJobsClaim = nil
+        }
+    }
 }
 
 struct MeResponse: Codable {
     let user: MobileUser
     let features: MobileFeatures?
+
+    enum CodingKeys: String, CodingKey {
+        case user
+        case features
+    }
+
+    init(user: MobileUser, features: MobileFeatures?) {
+        self.user = user
+        self.features = features
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        user = try container.decode(MobileUser.self, forKey: .user)
+        // If `features` is malformed, keep user and treat flags as off —
+        // do not fail the entire `/me` decode (would leave session stuck).
+        if container.contains(.features) {
+            features = try? container.decodeIfPresent(MobileFeatures.self, forKey: .features)
+        } else {
+            features = nil
+        }
+    }
 }
 
 struct BookingsResponse: Codable {

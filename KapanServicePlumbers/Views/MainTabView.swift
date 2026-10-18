@@ -13,7 +13,10 @@ struct MainTabView: View {
                     )
                 }
 
-            if session.features.isOpenJobsClaimEnabled, session.user?.isPlumber == true {
+            // Flag ON → show for plumber and admin (API open board allows both;
+            // claim stays field-role gated server-side).
+            if session.features.isOpenJobsClaimEnabled,
+               session.user?.canBrowseOpenJobs == true {
                 OpenJobsListView()
                     .tabItem { Label("Open jobs", systemImage: "tray") }
             }

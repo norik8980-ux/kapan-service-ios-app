@@ -308,17 +308,24 @@ struct OpenJobDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
 
-                Button {
-                    showConfirm = true
-                } label: {
-                    Text(busy ? "Accepting…" : "Accept job")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                // Accept is plumber-facing; admins may browse the board for QA.
+                if session.user?.isPlumber == true {
+                    Button {
+                        showConfirm = true
+                    } label: {
+                        Text(busy ? "Accepting…" : "Accept job")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(KapanTheme.orange)
+                    .disabled(busy)
+                } else if session.user?.isAdmin == true {
+                    Text("Browse only — sign in as a plumber to accept jobs.")
+                        .font(.footnote)
+                        .foregroundStyle(KapanTheme.muted)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(KapanTheme.orange)
-                .disabled(busy)
 
                 if let error {
                     Text(error)
