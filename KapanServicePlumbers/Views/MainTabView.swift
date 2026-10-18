@@ -13,10 +13,9 @@ struct MainTabView: View {
                     )
                 }
 
-            // Flag ON → show for plumber and admin (API open board allows both;
-            // claim stays field-role gated server-side).
-            if session.features.isOpenJobsClaimEnabled,
-               session.user?.canBrowseOpenJobs == true {
+            // Always visible for plumber + admin (no feature-flag gate).
+            // Claim / Slide to Accept stays plumber-only on the open-job detail.
+            if session.user?.canBrowseOpenJobs == true {
                 OpenJobsListView()
                     .tabItem { Label("Open jobs", systemImage: "tray") }
             }

@@ -12,7 +12,7 @@ struct MobileUser: Codable, Identifiable, Equatable {
 
     var isAdmin: Bool { normalizedRole == "admin" }
     var isPlumber: Bool { normalizedRole == "plumber" }
-    /// Open jobs board: plumbers claim; admins may browse when the flag is on.
+    /// Open jobs tab: always shown for plumber + admin (no visibility toggle).
     var canBrowseOpenJobs: Bool { isPlumber || isAdmin }
     var displayName: String { name.isEmpty ? email : name }
     var roleLabel: String {

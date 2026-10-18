@@ -51,7 +51,7 @@ final class SessionStore: ObservableObject {
         await refreshFeatures()
     }
 
-    /// Refresh feature flags from `/me` (Open jobs toggle, etc.).
+    /// Refresh feature flags from `/me` (compat; Open jobs tab is always on).
     func refreshFeatures() async {
         guard token != nil else {
             features = .disabled

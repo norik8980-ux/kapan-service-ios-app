@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Plumber Open jobs board — privacy-safe list until Accept job succeeds.
+/// Open jobs board — privacy-safe list; Accept only via Slide to Accept on detail.
 struct OpenJobsListView: View {
     @EnvironmentObject private var session: SessionStore
     @State private var bookings: [MobileBooking] = []
@@ -22,10 +22,17 @@ struct OpenJobsListView: View {
             .navigationTitle("Open jobs")
             .navigationBarTitleDisplayMode(.large)
             .tint(KapanTheme.orange)
-            .navigationDestination(for: String.self) { id in
-                OpenJobDetailView(bookingId: id) { claimed in
-                    bookings.removeAll { $0.id == claimed.id }
-                    path = NavigationPath()
+            .navigationDestination(for: OpenJobsRoute.self) { route in
+                switch route {
+                case .openDetail(let id):
+                    OpenJobDetailView(bookingId: id) { claimed in
+                        bookings.removeAll { $0.id == claimed.id }
+                        // Replace stack with full assigned job detail (PII unlocked).
+                        path = NavigationPath()
+                        path.append(OpenJobsRoute.assignedDetail(claimed.id))
+                    }
+                case .assignedDetail(let id):
+                    BookingDetailView(bookingId: id)
                 }
             }
             .task { await load() }
@@ -83,7 +90,7 @@ struct OpenJobsListView: View {
                                 .accessibilityAddTraits(.isHeader)
 
                             ForEach(section.bookings) { booking in
-                                NavigationLink(value: booking.id) {
+                                NavigationLink(value: OpenJobsRoute.openDetail(booking.id)) {
                                     OpenJobRow(booking: booking)
                                 }
                                 .buttonStyle(.plain)
@@ -134,6 +141,11 @@ struct OpenJobsListView: View {
             await session.handleUnauthorized(error)
         }
     }
+}
+
+private enum OpenJobsRoute: Hashable {
+    case openDetail(String)
+    case assignedDetail(String)
 }
 
 struct OpenJobRow: View {
@@ -207,8 +219,9 @@ struct OpenJobDetailView: View {
     @State private var error: String?
     @State private var loadFailed = false
     @State private var busy = false
-    @State private var showConfirm = false
     @State private var claimAlert: String?
+
+    private var canAccept: Bool { session.user?.isPlumber == true }
 
     var body: some View {
         Group {
@@ -226,18 +239,6 @@ struct OpenJobDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .tint(KapanTheme.orange)
         .task { await reload() }
-        .confirmationDialog(
-            "Accept this job?",
-            isPresented: $showConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Accept job") {
-                Task { await claim() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Exact address and customer contact will unlock.")
-        }
         .alert("Couldn’t accept", isPresented: Binding(
             get: { claimAlert != nil },
             set: { if !$0 { claimAlert = nil } }
@@ -250,92 +251,117 @@ struct OpenJobDetailView: View {
 
     @ViewBuilder
     private func detail(_ booking: MobileBooking) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(booking.service.name)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(KapanTheme.ink)
-                    Text(booking.scheduledLabel)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(KapanTheme.muted)
-                    if !booking.customerName.isEmpty {
-                        Text(booking.customerName)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(KapanTheme.ink)
-                    }
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        ZStack {
+            KapanTheme.canvasGradient
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Approximate area")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(KapanTheme.muted)
-                    Text(booking.address)
-                        .font(.body)
-                        .foregroundStyle(KapanTheme.ink)
-                    if booking.jobLat != nil, booking.jobLng != nil {
-                        Button {
-                            openApproxMaps(booking)
-                        } label: {
-                            Label("View approximate area", systemImage: "map")
-                                .font(.subheadline.weight(.semibold))
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(booking.service.name)
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(KapanTheme.ink)
+                            Text(booking.scheduledLabel)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(KapanTheme.muted)
+                            if !booking.customerName.isEmpty {
+                                Text(booking.customerName)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(KapanTheme.ink)
+                            }
                         }
-                        .buttonStyle(.bordered)
-                        .tint(KapanTheme.blue)
-                    }
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-                if !booking.notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(KapanTheme.muted)
-                        Text(booking.notes)
-                            .font(.body)
-                            .foregroundStyle(KapanTheme.ink)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Approximate area")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(KapanTheme.muted)
+                            Text(booking.address)
+                                .font(.body)
+                                .foregroundStyle(KapanTheme.ink)
+                            if booking.jobLat != nil, booking.jobLng != nil {
+                                Button {
+                                    openApproxMaps(booking)
+                                } label: {
+                                    Label("View approximate area", systemImage: "map")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(KapanTheme.blue)
+                            }
+                        }
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                        if !booking.notes.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Notes")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(KapanTheme.muted)
+                                Text(booking.notes)
+                                    .font(.body)
+                                    .foregroundStyle(KapanTheme.ink)
+                            }
+                            .padding(18)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+
+                        if session.user?.isAdmin == true, !canAccept {
+                            Text("Browse only — sign in as a plumber to accept jobs.")
+                                .font(.footnote)
+                                .foregroundStyle(KapanTheme.muted)
+                        }
+
+                        if let error {
+                            Text(error)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
                     }
-                    .padding(18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(16)
+                    .padding(.bottom, canAccept ? 120 : 28)
                 }
 
-                // Accept is plumber-facing; admins may browse the board for QA.
-                if session.user?.isPlumber == true {
-                    Button {
-                        showConfirm = true
-                    } label: {
-                        Text(busy ? "Accepting…" : "Accept job")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(KapanTheme.orange)
-                    .disabled(busy)
-                } else if session.user?.isAdmin == true {
-                    Text("Browse only — sign in as a plumber to accept jobs.")
-                        .font(.footnote)
-                        .foregroundStyle(KapanTheme.muted)
-                }
-
-                if let error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                if canAccept {
+                    acceptSlideBar
                 }
             }
-            .padding(16)
         }
-        .background(KapanTheme.canvasGradient)
+    }
+
+    private var acceptSlideBar: some View {
+        VStack(spacing: 8) {
+            Text("Exact address and customer contact unlock after you accept.")
+                .font(.caption)
+                .foregroundStyle(KapanTheme.muted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+
+            SlideToActControl(
+                title: "Slide to Accept",
+                tint: KapanTheme.orange,
+                systemImage: "checkmark",
+                disabled: busy
+            ) {
+                await claim()
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(KapanTheme.border.opacity(0.7))
+                .frame(height: 1)
+        }
     }
 
     private func openApproxMaps(_ booking: MobileBooking) {
