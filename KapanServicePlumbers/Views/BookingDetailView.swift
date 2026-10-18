@@ -321,7 +321,10 @@ struct BookingDetailView: View {
                     )
             }
 
-            if !canChangeStatus {
+            // Only when the viewer cannot act because of assignment/role —
+            // not merely because the job is already completed/canceled (or
+            // Start/Finished slides are hidden for schedule reasons).
+            if showsStatusLockedBanner {
                 Text(statusLockedMessage)
                     .font(.caption)
                     .foregroundStyle(KapanTheme.muted)
@@ -443,20 +446,29 @@ struct BookingDetailView: View {
         guard let user = session.user else { return false }
         guard let booking else { return false }
         // Completed / canceled: no field slides (matches server plumber graph).
-        if booking.status == "completed" || booking.status == "canceled" {
+        if isTerminalFieldStatus(booking.status) {
             return false
         }
-        let allowed: Bool
-        if user.isAdmin {
-            allowed = true
-        } else if user.isPlumber {
-            allowed = booking.assignedPlumberId == user.id
-        } else {
-            allowed = false
-        }
-        guard allowed else { return false }
+        guard canMutateFieldStatus(user: user, booking: booking) else { return false }
         // Hide the action bar when neither Start nor Finished applies (e.g. days before job).
         return showsStartSlide(booking) || showsFinishSlide(booking)
+    }
+
+    /// Unowned / non-actor lock copy — never for own completed/canceled jobs.
+    private var showsStatusLockedBanner: Bool {
+        guard let user = session.user else { return false }
+        guard let booking else { return false }
+        // Terminal: StatusChip is enough; slides are already hidden.
+        if isTerminalFieldStatus(booking.status) {
+            return false
+        }
+        // Admin can update field status on active jobs.
+        if user.isAdmin { return false }
+        // Plumber: only when this job is not theirs.
+        if user.isPlumber {
+            return booking.assignedPlumberId != user.id
+        }
+        return true
     }
 
     private var statusLockedMessage: String {
@@ -464,6 +476,16 @@ struct BookingDetailView: View {
             return "Not assigned to you — status locked."
         }
         return "Only the assigned plumber or admin can update status."
+    }
+
+    private func isTerminalFieldStatus(_ status: String) -> Bool {
+        status == "completed" || status == "canceled" || status == "cancelled"
+    }
+
+    private func canMutateFieldStatus(user: MobileUser, booking: MobileBooking) -> Bool {
+        if user.isAdmin { return true }
+        if user.isPlumber { return booking.assignedPlumberId == user.id }
+        return false
     }
 
     private func showsStartSlide(_ booking: MobileBooking) -> Bool {
