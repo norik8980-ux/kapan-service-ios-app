@@ -335,20 +335,9 @@ struct OpenJobDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(detailCardBackground)
 
-                        if !booking.notes.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Notes")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(KapanTheme.muted)
-                                    .textCase(.uppercase)
-                                Text(booking.notes)
-                                    .font(.body)
-                                    .foregroundStyle(KapanTheme.ink)
-                            }
-                            .padding(18)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(detailCardBackground)
-                        }
+                        // Always show Notes before accept (open-board API returns notes;
+                        // hide-when-empty looked broken when notes were present but missed).
+                        notesCard(booking)
 
                         if session.user?.isAdmin == true, !canAccept {
                             Text("Browse only — sign in as a plumber to accept jobs.")
@@ -371,6 +360,26 @@ struct OpenJobDetailView: View {
                 }
             }
         }
+    }
+
+    private func notesCard(_ booking: MobileBooking) -> some View {
+        let trimmed = booking.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let empty = trimmed.isEmpty
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Notes")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KapanTheme.muted)
+                .textCase(.uppercase)
+            Text(empty ? "No notes." : booking.notes)
+                .font(.body)
+                .foregroundStyle(empty ? KapanTheme.muted : KapanTheme.ink)
+                .textSelection(.enabled)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(detailCardBackground)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(empty ? "Notes: No notes" : "Notes: \(booking.notes)")
     }
 
     private func detailIconRow<Content: View>(
