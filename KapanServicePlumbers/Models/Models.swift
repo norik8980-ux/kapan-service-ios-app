@@ -48,6 +48,8 @@ struct MobileBooking: Codable, Identifiable, Equatable {
     let customerEmail: String
     let customerPhone: String
     let address: String
+    /// Server alias for list cards — same as `address` (already masked when piiMasked).
+    let addressDisplay: String?
     /// True when phone/email/street were redacted (plumber, after completed 1h window).
     let piiMasked: Bool?
     /// Server: Message allowed (false before job day / after 1h on completed).
@@ -93,6 +95,15 @@ struct MobileBooking: Codable, Identifiable, Equatable {
         // Offline-safe: canceled jobs hide contact until a fresh payload arrives.
         if normalized == "canceled" || normalized == "cancelled" { return true }
         return false
+    }
+
+    /// Prefer server `addressDisplay` (masked locality) over raw `address` for cards.
+    var displayAddress: String {
+        if let display = addressDisplay?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !display.isEmpty {
+            return display
+        }
+        return address
     }
     var amountLabel: String {
         let dollars = Double(amountCents) / 100.0

@@ -243,7 +243,7 @@ struct BookingDetailView: View {
             }
 
             detailIconRow(systemImage: "mappin.and.ellipse", tint: KapanTheme.blue) {
-                Text(booking.address)
+                Text(booking.displayAddress)
                     .font(.body.weight(.medium))
                     .foregroundStyle(KapanTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -619,7 +619,7 @@ struct AssignPlumberSheet: View {
             List {
                 Section {
                     Text(booking.customerName).font(.headline)
-                    Text(booking.address).font(.caption).foregroundStyle(.secondary)
+                    Text(booking.displayAddress).font(.caption).foregroundStyle(.secondary)
                     if let current = booking.assignedPlumber {
                         Text("Currently: \(current.displayName)")
                             .font(.caption)

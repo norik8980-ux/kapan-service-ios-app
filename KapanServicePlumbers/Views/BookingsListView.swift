@@ -241,7 +241,7 @@ struct BookingRow: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Label {
-                    Text(booking.address)
+                    Text(booking.displayAddress)
                         .lineLimit(2)
                 } icon: {
                     Image(systemName: "mappin.and.ellipse")
